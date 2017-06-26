@@ -4,7 +4,7 @@ HDMI-CEC library with a simple monitor written on ES6 to make cec enabled apps.
 ## Install
 
 ```bash
-npm install --save cec-monitor
+npm install --save @senzil/cec-monitor
 ```
 
 ## Example
