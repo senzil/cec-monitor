@@ -1,0 +1,38 @@
+{
+  "name": "@senzil/cec-monitor",
+  "version": "1.0.0",
+  "description": "HDMI-CEC library with a simple monitor written on ES6 to make cec enabled apps.",
+  "author": {
+    "name": "SENZIL SRL",
+    "web": "https://www.senzil.com"
+  },
+  "collaborators": [
+    "Pablo González <pablodgonzalez@gmail.com>"
+  ],
+  "main": "index.js",
+  "keywords": [
+    "cec",
+    "hdmi",
+    "monitor",
+    "wrapper"
+  ],
+  "scripts": {
+    "build": "babel src -d lib",
+    "test": "babel src -d lib && node test/test.js",
+    "prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-env": "^2.4.1",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "eslint": "^3.19.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:senzil/cec-monitor.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "event-stream": "^3.3.4"
+  }
+}
