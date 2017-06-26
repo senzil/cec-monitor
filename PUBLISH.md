@@ -1,7 +1,7 @@
 ##### How to publish to NPM repository
 
 ```bash
-npm version patch
+npm --sign-git-tag version patch
 
 git push --tags
 
