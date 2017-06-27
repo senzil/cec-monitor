@@ -6,6 +6,7 @@ import {spawn} from 'child_process';
 import {EventEmitter} from 'events';
 import es from 'event-stream';
 import CEC from './HDMI-CEC.1.4';
+import ON_DEATH from 'death';
 
 export default class CECMonitor extends EventEmitter {
 
@@ -15,22 +16,31 @@ export default class CECMonitor extends EventEmitter {
   ready;
   address;
 
-  constructor(OSDName, debug, HDMIport) {
+  constructor(OSDName, options) {
     super();
     this.ready = false;
     this.address = {
       primary: CEC.LogicalAddress.UNKNOWN,
       physical: 'f.f.f.f',
       base: CEC.LogicalAddress.UNKNOWN,
-      hdmi: -1
+      hdmi: options.hdmiport || 1
     };
     this.OSDName = OSDName || 'cec-monitor';
-    this.debug = debug;
+    this.debug = options.debug;
 
-    process.on('exit', this.Stop);
-    process.on('SIGINT',this.Stop);
+    process.on('beforeExit', this.Stop);
+    process.on('exit',this.Stop);
 
-    this.client = spawn('cec-client', ['-t', 'r', '-t', 'p', '-t', 't', '-t', 'a', '-d', !this.debug ? '12' : '32']);
+    if(!options.processManaged) {
+      ON_DEATH({uncaughtException: true})((signal, err) => {
+        if(err){
+          console.error(err);
+        }
+        process.exit();
+      });
+    }
+
+    this.client = spawn('cec-client', ['-t', 'r', '-t', 'p', '-t', 't', '-t', 'a', '-d', !this.debug ? '12' : '32', '-p', this.address.hdmi]);
     this.client.stdout
       .pipe(es.split())
       .pipe(es.map(this._processStdOut));
@@ -121,23 +131,29 @@ export default class CECMonitor extends EventEmitter {
     return new Promise(this._checkReady);
   }
 
-  WriteRawMessage(raw) {
-    return this.isReady.then(() => this.client.stdin.write(raw + '\n'));
-  }
+  WriteRawMessage = function(raw) {
+    return this.isReady
+      .then(() => this.client.stdin.write(raw + '\n'))
+      .catch(e => {
+        console.log('the cec adapter is not ready');
+        console.log(e);
+      });
+  }.bind(this);
 
-  WriteMessage(source, target, opcode, args) {
+  WriteMessage = function(source, target, opcode, args) {
     let msg = `tx ${[((source << 4) + target), opcode].concat(args || []).map(h => `0${h.toString(16)}`.substr(-2)).join(':')}`;
     return this.WriteRawMessage(msg);
-  }
+  }.bind(this);
 
-  Stop() {
-    this.emit(CECMonitor.EVENTS._STOP);
+  Stop = function() {
     if(this.client) {
       this.client.kill('SIGINT');
+      this._onClose();
     }
-  }
+  }.bind(this);
 
   _onClose = function _onClose() {
+    this.client = null;
     return this.emit(CECMonitor.EVENTS._STOP);
   }.bind(this);
 
@@ -174,12 +190,12 @@ export default class CECMonitor extends EventEmitter {
     let match = regex.exec(plain);
     if(match) {
 
-      let tokens = match[3].split(':').map(h => parseInt(h, 16));
+      let tokens = match[4].split(':').map(h => parseInt(h, 16));
 
       let packet = {
-        type: match[0],
-        number: match[1],
-        flow: match[2] === '<<' ? 'IN' : 'OUT',
+        type: match[1],
+        number: match[2],
+        flow: match[3] === '>>' ? 'IN' : 'OUT',
         source: (tokens[0] & 0xF0) >> 4,
         target: tokens[0] & 0x0F,
         opcode: tokens[1],
@@ -227,10 +243,10 @@ export default class CECMonitor extends EventEmitter {
         return this.emit(CECMonitor.EVENTS.ACTIVE_SOURCE, packet, source);
 
       case CEC.Opcode.CEC_VERSION:
-        if (packet.args.length !==2) {
+        if (packet.args.length !==1) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command CEC_VERSION without version');
         }
-        version = packet.args[0] << 8 | packet.args[1];
+        version = packet.args[0];
         return this.emit(CECMonitor.EVENTS.CEC_VERSION, packet, version);
 
       case CEC.Opcode.DECK_STATUS:
@@ -323,7 +339,7 @@ export default class CECMonitor extends EventEmitter {
             vendor = 'BENQ';
             break;
           default:
-            vendor: 'UNKNOWN';
+            vendor = 'UNKNOWN';
         }
         return this.emit(CECMonitor.EVENTS.DEVICE_VENDOR_ID, packet, id, vendor);
 
@@ -364,16 +380,16 @@ export default class CECMonitor extends EventEmitter {
         return this.emit(CECMonitor.EVENTS.STANDBY);
 
       default:
-        for (key in CEC.Opcode) {
-          if (opcodes[key] === packet.opcode) {
+        for (let key in CEC.Opcode) {
+          if (CEC.Opcode[key] === packet.opcode) {
             return this.emit(CECMonitor.EVENTS[key], packet);
           }
         }
     }
   };
 
-  _processNotice = function _processNotice(data) {
-    const regex = /(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu;
+  _processNotice = function _processNotice(data) {git
+    const regex = /logical\saddress\(es\)\s=\s(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu;
     let match = regex.exec(data);
     if(match) {
       this.address.primary = parseInt(match[2], 10);
@@ -381,6 +397,8 @@ export default class CECMonitor extends EventEmitter {
         this.address[match[2]] = true;
         match = regex.exec(data);
       }
+
+      console.log('DATA NOTICE', data);
 
       const regextra = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),\sphysical\saddress:\s([\w\.]+)/gu
       match = regextra.exec(data);

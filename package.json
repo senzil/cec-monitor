@@ -33,6 +33,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "death": "^1.1.0",
     "event-stream": "^3.3.4"
   }
 }
