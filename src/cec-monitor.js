@@ -396,7 +396,7 @@ export default class CECMonitor extends EventEmitter {
         if (packet.args.length !== 0) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command STANDBY with bad args');
         }
-        return this.emit(CECMonitor.EVENTS.STANDBY);
+        return this.emit(CECMonitor.EVENTS.STANDBY, packet);
 
       default:
         for (let key in CEC.Opcode) {

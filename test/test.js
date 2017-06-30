@@ -7,7 +7,7 @@
 var CECMonitor = require('../index').CECMonitor;
 var CEC = require('../index').CEC;
 
-var monitor = new CECMonitor('CEC-MONITOR-TESTER', {debug: true, player: true});
+var monitor = new CECMonitor('CEC-MONITOR', {debug: true, player: true, hdmiport: 2});
 
 var status = CEC.PowerStatus.UNKNOWN;
 
@@ -51,12 +51,17 @@ monitor.on(CECMonitor.EVENTS.REPORT_POWER_STATUS, function (packet, _status) {
   }
 });
 
+monitor.on(CECMonitor.EVENTS.STANDBY, function(packet) {
+  if(packet.source === CEC.LogicalAddress.TV){
+    status === CEC.PowerStatus.STANDBY;
+  }
+});
+
 setInterval(function(){
-  console.log('%d, %d, %s', status, CEC.PowerStatus.STANDBY, status === CEC.PowerStatus.STANDBY);
-  if(status === CEC.PowerStatus.STANDBY) {
+  if(status !== CEC.PowerStatus.ON) {
     monitor.WriteMessage(CEC.LogicalAddress.RECORDINGDEVICE1, CEC.LogicalAddress.TV, CEC.Opcode.IMAGE_VIEW_ON);
   } else {
     monitor.WriteMessage(CEC.LogicalAddress.RECORDINGDEVICE1, CEC.LogicalAddress.TV, CEC.Opcode.STANDBY);
   }
-  setTimeout(() => monitor.WriteMessage(CEC.LogicalAddress.RECORDINGDEVICE1, CEC.LogicalAddress.TV, CEC.Opcode.GIVE_DEVICE_POWER_STATUS), 1000);
+  setTimeout(() => monitor.WriteMessage(CEC.LogicalAddress.RECORDINGDEVICE1, CEC.LogicalAddress.TV, CEC.Opcode.GIVE_DEVICE_POWER_STATUS), 5000);
 }, 60000);
