@@ -25,7 +25,7 @@
     "babel-cli": "^6.24.1",
     "babel-env": "^2.4.1",
     "babel-plugin-transform-class-properties": "^6.24.1",
-    "eslint": "^3.19.0"
+    "eslint": "^4.1.1"
   },
   "repository": {
     "type": "git",

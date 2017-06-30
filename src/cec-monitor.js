@@ -21,7 +21,7 @@ export default class CECMonitor extends EventEmitter {
     this.ready = false;
     this.address = {
       primary: CEC.LogicalAddress.UNKNOWN,
-      physical: 'f.f.f.f',
+      physical: 0xFFFF,
       base: CEC.LogicalAddress.UNKNOWN,
       hdmi: options.hdmiport || 1
     };
@@ -40,7 +40,26 @@ export default class CECMonitor extends EventEmitter {
       });
     }
 
-    this.client = spawn('cec-client', ['-t', 'r', '-t', 'p', '-t', 't', '-t', 'a', '-d', !this.debug ? '12' : '32', '-p', this.address.hdmi]);
+    let params = [];
+    if(options.recorder !== false){
+      params.push('-t', 'r');
+    }
+
+    if(options.player === true){
+      params.push('-t', 'p');
+    }
+
+    if(options.tuner === true){
+      params.push('-t', 't');
+    }
+
+    if(options.audio === true){
+      params.push('-t', 'a');
+    }
+
+    params.push('-d', !this.debug ? '12' : '32', '-p', this.address.hdmi.toString());
+
+    this.client = spawn('cec-client', params);
     this.client.stdout
       .pipe(es.split())
       .pipe(es.map(this._processStdOut));
@@ -152,12 +171,12 @@ export default class CECMonitor extends EventEmitter {
     }
   }.bind(this);
 
-  _onClose = function _onClose() {
+  _onClose = function() {
     this.client = null;
     return this.emit(CECMonitor.EVENTS._STOP);
   }.bind(this);
 
-  _checkReady = function _checkReady(resolve) {
+  _checkReady = function(resolve) {
     if(this.ready) {
       return resolve();
     }
@@ -165,7 +184,7 @@ export default class CECMonitor extends EventEmitter {
     setTimeout(() => this._checkReady(resolve),1000);
   }.bind(this);
 
-  _processStdOut = function _processStdOut(data, cb) {
+  _processStdOut = function(data, cb) {
     if(/^TRAFFIC:.*/g.test(data)){
       this._processTraffic(data);
     } else if(this.debug && /^DEBUG:.*/g.test(data)) {
@@ -185,7 +204,7 @@ export default class CECMonitor extends EventEmitter {
     cb(null, data);
   }.bind(this);
 
-  _readPacket = function _readPacket(plain) {
+  _readPacket = function(plain) {
     const regex = /^(TRAFFIC|DEBUG):\s\[\s*(\d*)\]\s(<<|>>)\s(([\d\w]{2}[:]?)+)$/gu;
     let match = regex.exec(plain);
     if(match) {
@@ -209,7 +228,7 @@ export default class CECMonitor extends EventEmitter {
     return null;
   }.bind(this);
 
-  _processTraffic = function _processTraffic(data){
+  _processTraffic = function(data){
 
     this.emit(CECMonitor.EVENTS._TRAFFIC, data);
 
@@ -224,12 +243,12 @@ export default class CECMonitor extends EventEmitter {
       if(!packet.opcode){
         this.emit(CECMonitor.EVENTS.POLLING_MESSAGE, packet);
       } else {
-        this._precessEvents(packet);
+        this._processEvents(packet);
       }
     }
   }.bind(this);
 
-  _precessEvents = function _precessEvents(packet) {
+  _processEvents = function(packet) {
 
     let source, version, status, id, vendor, from, to, osdname;
 
@@ -388,7 +407,7 @@ export default class CECMonitor extends EventEmitter {
     }
   };
 
-  _processNotice = function _processNotice(data) {git
+  _processNotice = function(data) {
     const regex = /logical\saddress\(es\)\s=\s(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu;
     let match = regex.exec(data);
     if(match) {
@@ -398,12 +417,10 @@ export default class CECMonitor extends EventEmitter {
         match = regex.exec(data);
       }
 
-      console.log('DATA NOTICE', data);
-
-      const regextra = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),\sphysical\saddress:\s([\w\.]+)/gu
+      const regextra = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),\sphysical\saddress:\s([\w\.]+)/gu;
       match = regextra.exec(data);
 
-      this.address.physical = match[3];
+      this.address.physical = match[3].split('.').map(n => parseInt(n, 16)).reduce((a, b) => a = a << 4 | b, 0);
       this.address.base = parseInt(match[1], 10);
       this.address.hdmi = parseInt(match[2], 10);
     }
@@ -411,15 +428,15 @@ export default class CECMonitor extends EventEmitter {
     return this.emit(CECMonitor.EVENTS._NOTICE, data);
   }.bind(this);
 
-  _processDebug = function _processDebug(data){
+  _processDebug = function(data){
     return this.emit(CECMonitor.EVENTS._DEBUG, data);
   }.bind(this);
 
-  _processWarning = function _processWarning(data){
+  _processWarning = function(data){
     return this.emit(CECMonitor.EVENTS._WARNING, data);
   }.bind(this);
 
-  _processError = function _processError(data){
+  _processError = function(data){
     return this.emit(CECMonitor.EVENTS._ERROR, data);
   }.bind(this);
 }

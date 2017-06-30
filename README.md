@@ -16,9 +16,13 @@ import {CEC, CECMonitor} from 'cec-monitor';
 
 //All config options are optionals
 let monitor = new CECMonitor('custom-osdname', {
-  debug: false, // enable/disabled debug events from cec-client
-  hdmiport: 1, // set inital hdmi port
-  processManaged: false // set/unset handlers to avoid unclear process exit.
+  debug: false,           // enable/disabled debug events from cec-client
+  hdmiport: 1,            // set inital hdmi port
+  processManaged: false,  // set/unset handlers to avoid unclear process exit.
+  recorder: true,         //enable cec-client as recorder device
+  player: false,          //enable cec-client as player device
+  tuner: false,           //enable cec-client as tuner device
+  audio: false            //enable cec-client as audio system device
 });
 
 
@@ -46,7 +50,7 @@ monitor.on(CECMonitor.EVENTS.ROUTING_CHANGE, function(packet, fromSource, toSour
 
 ## Roadmap
 
-* Improve constructor to improve cec-client configuration
+* ~~Improve constructor to improve cec-client configuration~~
 * Implement more events with more context info
 * Implement some user control actions as special events (combining USER_CONTROL_PRESSED and USERCONTROL RELEASE events)
 * **Implement a ceclib adapter to avoid use a cec-client wrapper**

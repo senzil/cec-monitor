@@ -7,7 +7,7 @@
 var CECMonitor = require('../index').CECMonitor;
 var CEC = require('../index').CEC;
 
-var monitor = new CECMonitor('CEC-MONITOR-TESTER', {debug: true});
+var monitor = new CECMonitor('CEC-MONITOR-TESTER', {debug: true, player: true});
 
 var status = CEC.PowerStatus.UNKNOWN;
 
