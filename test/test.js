@@ -7,7 +7,15 @@
 var CECMonitor = require('../index').CECMonitor;
 var CEC = require('../index').CEC;
 
-var monitor = new CECMonitor('CEC-MONITOR', {debug: true, player: true, hdmiport: 2});
+var monitor = new CECMonitor('CECMONITOR', {
+  debug: true,
+  player: true,
+  hdmiport: 2,
+  no_serial: {
+    reconnect: true,
+    wait_time: 10
+  }
+});
 
 var status = CEC.PowerStatus.UNKNOWN;
 
@@ -15,6 +23,7 @@ monitor.on(CECMonitor.EVENTS._DATA, console.log);
 
 monitor.once(CECMonitor.EVENTS._READY, function() {
   console.log( ' -- READY -- ' );
+  monitor.WriteMessage(CEC.LogicalAddress.RECORDINGDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE, [monitor.address.physical >> 8, monitor.address.physical & 0xFF]);
 });
 
 monitor.once(CECMonitor.EVENTS._NOTICE, function() {
@@ -33,6 +42,10 @@ monitor.once(CECMonitor.EVENTS._TRAFFIC, function() {
   console.log( ' -- TRAFFIC -- ' );
 });
 
+monitor.on(CECMonitor.EVENTS._NOSERIALPORT, function() {
+  console.log( ' -- NO SERIAL PORT -- ' );
+});
+
 monitor.on(CECMonitor.EVENTS._STOP, function() {
   console.log( ' -- STOP -- ' );
 });
@@ -49,6 +62,11 @@ monitor.on(CECMonitor.EVENTS.REPORT_POWER_STATUS, function (packet, _status) {
       break;
     }
   }
+});
+
+monitor.on(CECMonitor.EVENTS.ROUTING_CHANGE, function(packet, from, to) {
+  console.log('--ROUTING CHANGE--');
+  console.log(packet, from, to);
 });
 
 monitor.on(CECMonitor.EVENTS.STANDBY, function(packet) {

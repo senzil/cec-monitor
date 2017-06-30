@@ -11,4 +11,6 @@ npm login --scope=@senzil
 
 npm publish --access public
 
+git checkout versionbranch
+
 ```

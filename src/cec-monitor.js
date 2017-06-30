@@ -15,17 +15,31 @@ export default class CECMonitor extends EventEmitter {
   client;
   ready;
   address;
+  no_serial;
+  autorestart;
+  autorestarting;
+  recconnect_intent;
+  params;
 
   constructor(OSDName, options) {
     super();
     this.ready = false;
+    this.autorestarting = false;
+    this.OSDName = OSDName || 'cec-monitor';
+    this.autorestart = options.autorestart ? options.autorestart : true;
     this.address = {
       primary: CEC.LogicalAddress.UNKNOWN,
       physical: 0xFFFF,
       base: CEC.LogicalAddress.UNKNOWN,
       hdmi: options.hdmiport || 1
     };
-    this.OSDName = OSDName || 'cec-monitor';
+    this.no_serial = {
+      reconnect: false,
+      wait_time: 30, //in seconds
+      trigger_stop: false
+    };
+    this.no_serial = Object.assign(this.no_serial, options.no_serial);
+    this.recconnect_intent = false;
     this.debug = options.debug;
 
     process.on('beforeExit', this.Stop);
@@ -40,30 +54,26 @@ export default class CECMonitor extends EventEmitter {
       });
     }
 
-    let params = [];
+    this.params = [];
     if(options.recorder !== false){
-      params.push('-t', 'r');
+      this.params.push('-t', 'r');
     }
 
     if(options.player === true){
-      params.push('-t', 'p');
+      this.params.push('-t', 'p');
     }
 
     if(options.tuner === true){
-      params.push('-t', 't');
+      this.params.push('-t', 't');
     }
 
     if(options.audio === true){
-      params.push('-t', 'a');
+      this.params.push('-t', 'a');
     }
 
-    params.push('-d', !this.debug ? '12' : '32', '-p', this.address.hdmi.toString());
+    this.params.push('-d', !this.debug ? '12' : '32', '-p', this.address.hdmi.toString());
 
-    this.client = spawn('cec-client', params);
-    this.client.stdout
-      .pipe(es.split())
-      .pipe(es.map(this._processStdOut));
-    this.client.on('close', this._onClose);
+    this._initCecClient();
   }
 
   static get EVENTS() {
@@ -79,6 +89,7 @@ export default class CECMonitor extends EventEmitter {
       _STOP: '_stop',
       _TRAFFIC: '_traffic',
       _WARNING: '_warning',
+      _NOSERIALPORT: '_no_serial_port',
 
       ABORT: 'ABORT',
       ACTIVE_SOURCE: 'ACTIVE_SOURCE',
@@ -171,9 +182,28 @@ export default class CECMonitor extends EventEmitter {
     }
   }.bind(this);
 
+  _initCecClient = function(){
+    this.client = spawn('cec-client', this.params);
+    this.client.stdout
+      .pipe(es.split())
+      .pipe(es.map(this._processStdOut));
+    this.client.on('close', this._onClose);
+  }.bind(this);
+
+  _restart = function() {
+    this._initCecClient();
+  }.bind(this);
+
   _onClose = function() {
     this.client = null;
-    return this.emit(CECMonitor.EVENTS._STOP);
+    if(this.autorestarting) {
+      setTimeout(this._initCecClient, 15000);
+    }
+    else if(this.no_serial.trigger_stop || !this.recconnect_intent) {
+      return this.emit(CECMonitor.EVENTS._STOP);
+    } else if(this.recconnect_intent) {
+      setTimeout(this._initCecClient, this.no_serial.wait_time * 1000)
+    }
   }.bind(this);
 
   _checkReady = function(resolve) {
@@ -192,12 +222,20 @@ export default class CECMonitor extends EventEmitter {
     } else if(/^NOTICE:.*/g.test(data)){
       this._processNotice(data);
     } else if(/^waiting for input.*/g.test(data)) {
+      this.autorestarting = false;
+      this.recconnect_intent = false;
       this.ready = true;
       this.emit(CECMonitor.EVENTS._READY);
     } else if(/^WARNING:.*/g.test(data)){
       this._processWarning(data);
     } else if(/^ERROR:.*/g.test(data)){
       this._processError(data);
+    } else if(/(^no\sserial\sport\sgiven)|(^Connection\slost)/gu.test(data)){
+      if(this.no_serial.reconnect) {
+        this.recconnect_intent = true;
+        this.ready = false;
+      }
+      this.emit(CECMonitor.EVENTS._NOSERIALPORT);
     }
 
     this.emit(CECMonitor.EVENTS._DATA, data);
@@ -433,6 +471,11 @@ export default class CECMonitor extends EventEmitter {
   }.bind(this);
 
   _processWarning = function(data){
+    if(/COMMAND_REJECTED/gu.test(data)){
+      this.ready = false;
+      this.autorestarting = true;
+      this.Stop();
+    }
     return this.emit(CECMonitor.EVENTS._WARNING, data);
   }.bind(this);
 
