@@ -4,11 +4,14 @@
   "description": "HDMI-CEC library with a simple monitor written on ES6 to make cec enabled apps.",
   "author": {
     "name": "SENZIL SRL",
+    "email": "contact@senzil.com",
     "web": "https://www.senzil.com"
   },
-  "collaborators": [
-    "Pablo González <pablodgonzalez@gmail.com>"
-  ],
+  "collaborators": [{
+    "name": "Pablo González",
+    "email": "pablodgonzalez@gmail.com",
+    "web": "https://github.com/pablodgonzalez"
+  }],
   "main": "index.js",
   "keywords": [
     "cec",

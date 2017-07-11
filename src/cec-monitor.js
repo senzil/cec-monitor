@@ -71,7 +71,7 @@ export default class CECMonitor extends EventEmitter {
       this.params.push('-t', 'a');
     }
 
-    this.params.push('-d', !this.debug ? '12' : '32', '-p', this.address.hdmi.toString());
+    this.params.push('-o', this.OSDName, '-d', '31', '-p', this.address.hdmi.toString());
 
     this._initCecClient();
   }
@@ -90,6 +90,7 @@ export default class CECMonitor extends EventEmitter {
       _TRAFFIC: '_traffic',
       _WARNING: '_warning',
       _NOSERIALPORT: '_no_serial_port',
+      _NOHDMICORD: '_no_hdmi_cord',
 
       ABORT: 'ABORT',
       ACTIVE_SOURCE: 'ACTIVE_SOURCE',
@@ -467,6 +468,9 @@ export default class CECMonitor extends EventEmitter {
   }.bind(this);
 
   _processDebug = function(data){
+    if(/TRANSMIT_FAILED_ACK/gu.test(data)){
+      return this.emit(CECMonitor.EVENTS._NOHDMICORD);
+    }
     return this.emit(CECMonitor.EVENTS._DEBUG, data);
   }.bind(this);
 
