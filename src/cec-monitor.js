@@ -218,7 +218,7 @@ export default class CECMonitor extends EventEmitter {
   _processStdOut = function(data, cb) {
     if(/^TRAFFIC:.*/g.test(data)){
       this._processTraffic(data);
-    } else if(this.debug && /^DEBUG:.*/g.test(data)) {
+    } else if(/^DEBUG:.*/g.test(data)) {
       this._processDebug(data);
     } else if(/^NOTICE:.*/g.test(data)){
       this._processNotice(data);
@@ -471,7 +471,10 @@ export default class CECMonitor extends EventEmitter {
     if(/TRANSMIT_FAILED_ACK/gu.test(data)){
       return this.emit(CECMonitor.EVENTS._NOHDMICORD);
     }
-    return this.emit(CECMonitor.EVENTS._DEBUG, data);
+    if(this.debug) {
+      return this.emit(CECMonitor.EVENTS._DEBUG, data);
+    }
+    return;
   }.bind(this);
 
   _processWarning = function(data){
