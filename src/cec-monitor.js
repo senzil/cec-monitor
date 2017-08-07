@@ -457,16 +457,16 @@ export default class CECMonitor extends EventEmitter {
       }
     }
 
-  	const regexDevice = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),/gu ;
-  	match = regexDevice.exec(data);
+    const regexDevice = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),/gu ;
+    match = regexDevice.exec(data);
     if(match) {
       this.address.base = parseInt(match[1], 10);
       this.address.hdmi = parseInt(match[2], 10);
     }
 
-  	const regexPhysical = /physical\saddress:\s([\w\.]+)/gu ;
-  	match = regexPhysical.exec(data);
-  	if(match) {
+    const regexPhysical = /physical\saddress:\s([\w\.]+)/gu ;
+    match = regexPhysical.exec(data);
+    if(match) {
       this.address.physical = match[1].split('.').map(n => parseInt(n, 16)).reduce((a, b) => a = a << 4 | b, 0);
     }
 
