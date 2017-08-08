@@ -485,7 +485,8 @@ var data = {
     VERSION_1_2: 0x01,
     VERSION_1_2A: 0x02,
     VERSION_1_3: 0x03,
-    VERSION_1_3A: 0x04
+    VERSION_1_3A: 0x04,
+    VERSION_1_4: 0X05
   },
 
   DeviceType: {
