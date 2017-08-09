@@ -314,10 +314,8 @@ export default class CECMonitor extends EventEmitter {
         }
         source = packet.args[0] << 8 | packet.args[1];
         data = {
-          source: {
-            val: source,
-            str: args2physical(packet.args)
-          }
+          val: source,
+          str: args2physical(packet.args)
         } ;
         break ;
 
@@ -327,10 +325,8 @@ export default class CECMonitor extends EventEmitter {
         }
         version = packet.args[0] ;
         data = {
-          version: {
-            val: version,
-            str: CEC.CECVersionNames[version]
-          }
+          val: version,
+          str: CEC.CECVersionNames[version]
         } ;
         break ;
 
@@ -341,10 +337,8 @@ export default class CECMonitor extends EventEmitter {
         }
         status = packet.args[0] << 8 | packet.args[1] ;
         data = {
-          status: {
-            val: status,
-            str: CEC.DeckStatusNames[status]
-          }
+          val: status,
+          str: CEC.DeckStatusNames[status]
         } ;
         break ;
 
@@ -355,10 +349,8 @@ export default class CECMonitor extends EventEmitter {
         id = packet.args[0] << 16 | packet.args[1] << 8 | packet.args[2];
         vendor = CEC.VendorIdNames[id] ;
         data = {
-          vendor: {
-            val: id,
-            str: vendor
-          }
+          val: id,
+          str: vendor
         } ;
         break ;
 
@@ -368,10 +360,8 @@ export default class CECMonitor extends EventEmitter {
         }
         source = packet.args[0] << 8 | packet.args[1];
         data = {
-          address: {
-            val: source,
-            str: args2physical(packet.args)
-          }
+          val: source,
+          str: args2physical(packet.args)
         } ;
         break ;
 
@@ -381,10 +371,8 @@ export default class CECMonitor extends EventEmitter {
         }
         status = packet.args[0];
         data = {
-          status: {
-            val: status,
-            str: CEC.PowerStatusNames[status]
-          }
+          val: status,
+          str: CEC.PowerStatusNames[status]
         } ;
         break ;
 
@@ -412,10 +400,8 @@ export default class CECMonitor extends EventEmitter {
         }
         osdname = String.fromCharCode.apply(null, packet.args);
         data = {
-          name: {
-            val: osdname,
-            str: osdname
-          }
+          val: osdname,
+          str: osdname
         } ;
         break ;
 
