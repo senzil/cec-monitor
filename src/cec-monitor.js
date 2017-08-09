@@ -307,9 +307,6 @@ export default class CECMonitor extends EventEmitter {
     // Store opcode name as event property
     packet.event = CEC.OpcodeNames[packet.opcode] ;
 
-    // Emit all events to 'event' event
-    this.emit('event',packet) ;
-
     switch (packet.opcode) {
       case CEC.Opcode.ACTIVE_SOURCE:
         if (packet.args.length !== 2) {
@@ -431,6 +428,9 @@ export default class CECMonitor extends EventEmitter {
 
     packet.data = data ;
     if(packet.event !== null) {
+      // Emit all events to 'event' event
+      this.emit('event',packet) ;
+
       return this.emit(packet.event,packet) ;
     }
   };
