@@ -447,21 +447,27 @@ export default class CECMonitor extends EventEmitter {
   };
 
   _processNotice = function(data) {
-    const regex = /logical\saddress\(es\)\s=\s(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu;
-    let match = regex.exec(data);
+    const regexLogical = /logical\saddress\(es\)\s=\s(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu;
+    let match = regexLogical.exec(data);
     if(match) {
       this.address.primary = parseInt(match[2], 10);
       while(match){
         this.address[match[2]] = true;
-        match = regex.exec(data);
+        match = regexLogical.exec(data);
       }
+    }
 
-      const regextra = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),\sphysical\saddress:\s([\w\.]+)/gu;
-      match = regextra.exec(data);
-
-      this.address.physical = match[3].split('.').map(n => parseInt(n, 16)).reduce((a, b) => a = a << 4 | b, 0);
+    const regexDevice = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),/gu ;
+    match = regexDevice.exec(data);
+    if(match) {
       this.address.base = parseInt(match[1], 10);
       this.address.hdmi = parseInt(match[2], 10);
+    }
+
+    const regexPhysical = /physical\saddress:\s([\w\.]+)/gu ;
+    match = regexPhysical.exec(data);
+    if(match) {
+      this.address.physical = match[1].split('.').map(n => parseInt(n, 16)).reduce((a, b) => a = a << 4 | b, 0);
     }
 
     return this.emit(CECMonitor.EVENTS._NOTICE, data);
