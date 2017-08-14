@@ -20,6 +20,9 @@ export default class CECMonitor extends EventEmitter {
   autorestarting;
   recconnect_intent;
   params;
+  cache;
+  p2l;
+  active_source;
 
   constructor(OSDName, options) {
     super();
@@ -41,6 +44,93 @@ export default class CECMonitor extends EventEmitter {
     this.no_serial = Object.assign(this.no_serial, options.no_serial);
     this.recconnect_intent = false;
     this.debug = options.debug;
+
+    // Cache of data about logical addresses
+    this.cache = {
+      0: {
+        physical: '0.0.0.0',
+        power: null,
+        osdname: 'TV'
+      },
+      1: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      2: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      3: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      4: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      5: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      6: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      7: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      8: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      9: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      10: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      11: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      12: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      13: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      14: {
+        physical: null,
+        power: null,
+        osdname: ''
+      },
+      15: {
+        physical: null,
+        power: null,
+        osdname: ''
+      }
+    } ;
+    // Maintain index pf physical addresses mapped to logical address
+    this.p2l = {} ;
+    this.active_source = null ; // Default not known
 
     process.on('beforeExit', this.Stop);
     process.on('exit',this.Stop);
@@ -159,9 +249,105 @@ export default class CECMonitor extends EventEmitter {
     }
   }
 
+  /**
+   * Determine when ready for commands
+   * @return {Promise} Resolves when ready
+   */
   get isReady() {
     return new Promise(this._checkReady);
   }
+
+  /**
+   * Get physical address of this instance
+   * @return {string} Physical address used by this instance
+   */
+  GetPhysicalAddress = function() {
+    return this.address.physical ;
+  }.bind(this);
+
+  /**
+   * Get first logical address of this device
+   * @return {number} First logical address used by this instance
+   */
+  GetLogicalAddress = function() {
+    return this.address.primary ;
+  }.bind(this);
+
+  /**
+   * Get all logical addresses of this device
+   * @return {array[number]} Primary logical address used by this instance
+   */
+  GetLogicalAddresses = function() {
+    return [].concat(Object.keys(this.address.logical)) ;
+  }.bind(this);
+
+  /**
+   * Get the physical address from logical address
+   * @param {number} logical
+   * @return {string|null}
+   */
+  Logical2Physical = function (logical) {
+    return this.cache[logical].physical ;
+  }.bind(this) ;
+
+  /**
+   * Get logical address from physical address
+   * @param {string} physical
+   * @return {number|null}
+   */
+  Physical2Logical = function (physical) {
+    let l = this.p2l[physical] ;
+    return (l === undefined) ? null : l ;
+  }.bind(this) ;
+
+  /**
+   * Get OSD name for given address
+   * @param {string|number} address (logical or physical)
+   * @return {string}
+   */
+  GetOSDName = function(address) {
+    if(isPhysical(address)) {
+      address = this.p2l[address] ;
+    }
+    return this.cache[address].osdname ;
+  }.bind(this) ;
+
+  /**
+   * Get power status for given address
+   * @param {string|number} address (logical or physical)
+   * @return {number|null}
+   */
+  GetPowerStatus = function(address) {
+    if(isPhysical(address)) {
+      address = this.p2l[address] ;
+    }
+    return this.cache[address].power ;
+  }.bind(this) ;
+
+  /**
+   * Get power status for given address as string
+   * @param {string|number} address (logical or physical)
+   * @return {string|null}
+   */
+  GetPowerStatusName = function(address) {
+    if(isPhysical(address)) {
+      address = this.p2l[address] ;
+    }
+    var power = this.cache[address].power ;
+    if(power === null) {
+      return power ;
+    }
+    return CEC.PowerStatusNames[this.cache[address].power] ;
+  }.bind(this) ;
+
+  /**
+   * Retrieve physical address of currently selected source
+   *
+   * @return {string} Physical address of the source currently selected
+   */
+  GetActiveSource = function() {
+    return this.active_source ;
+  }.bind(this) ;
 
   WriteRawMessage = function(raw) {
     return this.isReady
@@ -170,13 +356,49 @@ export default class CECMonitor extends EventEmitter {
         console.log('the cec adapter is not ready');
         console.log(e);
       });
-  }.bind(this);
+  }.bind(this) ;
 
   WriteMessage = function(source, target, opcode, args) {
+    if(typeof source === 'string') {
+      if(source.indexOf('0x') === 0){
+        source = parseInt(source,16) ;
+      }
+      else if(CEC.LogicalAddress.hasOwnProperty(source.toLocaleUpperCase())) {
+        source = CEC.LogicalAddress[source.toLocaleUpperCase()] ;
+      }
+    }
+    else if(typeof source !== 'number') {
+      source = this.GetLogicalAddress() ; // default to this instance logical address
+    }
+
+    if(typeof target === 'string') {
+      if(target.indexOf('0x') === 0){
+        target = parseInt(  target,16) ;
+      }
+      else if(CEC.LogicalAddress.hasOwnProperty(target.toLocaleUpperCase())) {
+        target = CEC.LogicalAddress[target.toLocaleUpperCase()] ;
+      }
+    }
+    else if(typeof target !== 'number') {
+      target = CEC.LogicalAddress.BROADCAST ; // default to the broadcast logical address
+    }
+
+    if(typeof opcode === 'string') {
+      if(opcode.indexOf('0x') === 0){
+        opcode = parseInt(  opcode,16) ;
+      }
+      else if(CEC.LogicalAddress.hasOwnProperty(opcode.toLocaleUpperCase())) {
+        opcode = CEC.LogicalAddress[opcode.toLocaleUpperCase()] ;
+      }
+    }
+
     if(typeof args === 'string') {
       // If a phyiscal address
-      if(args.match(/^(?:\d+\.){3}\d+$/)) {
+      if(isPhysical(args)) {
         args = physical2args(args) ;
+      }
+      else if(args.indexOf('0x') === 0){
+        args = parseInt(args,16) ;
       }
       // Otherwise treat as string argument
       else {
@@ -303,7 +525,7 @@ export default class CECMonitor extends EventEmitter {
   _processEvents = function(packet) {
 
     let data = {} ;
-    let source, version, status, id, vendor, from, to, osdname;
+    let physical, source, version, status, id, vendor, from, to, osdname;
 
     // Store opcode name as event property
     packet.event = CEC.OpcodeNames[packet.opcode] ;
@@ -314,9 +536,12 @@ export default class CECMonitor extends EventEmitter {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command ACTIVE_SOURCE with bad formated address');
         }
         source = packet.args[0] << 8 | packet.args[1];
+        physical = args2physical(packet.args) ;
+        // Update our records
+        this.active_source = physical ;
         data = {
           val: source,
-          str: args2physical(packet.args)
+          str: physical
         } ;
         break ;
 
@@ -360,9 +585,13 @@ export default class CECMonitor extends EventEmitter {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command REPORT_PHYSICAL_ADDRESS with bad formated address or device type');
         }
         source = packet.args[0] << 8 | packet.args[1];
+        physical = args2physical(packet.args) ;
+        // Update our records
+        this.cache[packet.source].physical = physical ;
+        this.p2l[physical] = packet.source ;
         data = {
           val: source,
-          str: args2physical(packet.args)
+          str: physical
         } ;
         break ;
 
@@ -371,6 +600,8 @@ export default class CECMonitor extends EventEmitter {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command REPORT_POWER_STATUS with bad formated power status');
         }
         status = packet.args[0];
+        // Update our records
+        this.cache[packet.source].power = status ;
         data = {
           val: status,
           str: CEC.PowerStatusNames[status]
@@ -383,6 +614,8 @@ export default class CECMonitor extends EventEmitter {
         }
         from = packet.args[0] << 8 | packet.args[1];
         to = packet.args[2] << 8 | packet.args[3];
+        // Update our records
+        this.active_source = args2physical(packet.args.slice(2,4)) ;
         data = {
           from: {
             val: from,
@@ -400,6 +633,8 @@ export default class CECMonitor extends EventEmitter {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command SET_OSD_NAME without OSD NAME')
         }
         osdname = String.fromCharCode.apply(null, packet.args);
+        // Update our records
+        this.cache[packet.source].osdname = osdname ;
         data = {
           val: osdname,
           str: osdname
@@ -427,8 +662,11 @@ export default class CECMonitor extends EventEmitter {
     let match = regexLogical.exec(data);
     if(match) {
       this.address.primary = parseInt(match[2], 10);
+      this.cache[this.address.primary].osdname = this.OSDName ;
+      this.address.logical = {} ;
       while(match){
-        this.address[match[2]] = true;
+        this.address.logical[match[2]] = true ;
+        this.cache[match[2]].osdname = this.OSDName ;
         match = regexLogical.exec(data);
       }
     }
@@ -443,7 +681,11 @@ export default class CECMonitor extends EventEmitter {
     const regexPhysical = /physical\saddress:\s([\w\.]+)/gu ;
     match = regexPhysical.exec(data);
     if(match) {
-      this.address.physical = match[1].split('.').map(n => parseInt(n, 16)).reduce((a, b) => a = a << 4 | b, 0);
+      this.address.physical = match[1] ;
+      Object.keys(this.address.logical).forEach( s => {
+				this.cache[s].physical = this.address.physical ;
+				this.p2l[this.address.physical] = s ;
+      }) ;
     }
 
     return this.emit(CECMonitor.EVENTS._NOTICE, data);
@@ -499,4 +741,13 @@ function physical2args(address) {
   v >>= 8 ;
   arr.unshift(v & 0xFF) ;
   return arr ;
+}
+
+/**
+ * Determine if provided string matches a CEC physical address
+ * @param {string} address Address to test
+ * @return {boolean} True if it matches form 0.0.0.0 otherwise false
+ */
+function isPhysical(address) {
+  return (address.toString().match(/^(?:\d+\.){3}\d+$/) !== null) ;
 }

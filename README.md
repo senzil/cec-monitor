@@ -9,7 +9,7 @@ npm install --save @senzil/cec-monitor
 
 ## Example
 
-#### Source
+### Source
 
 ```javascript
 import {CEC, CECMonitor} from 'cec-monitor';
@@ -53,6 +53,13 @@ monitor.on(CECMonitor.EVENTS.ROUTING_CHANGE, function(packet, fromSource, toSour
   console.log( 'Routing changed from ' + fromSource + ' to ' + toSource + '.' );
 });
 ```
+
+### cli.js
+
+You can experiment with how cec-monitor works and the codes generated with your HDMI connected equipment by 
+experimenting with the `bin/cli.js` script. This script implements a simple readline command interface where you can 
+execute instructions and see how cec-monitor responds, allowing you to adapt to your requirements. Press `TAB` for
+autocompletion of commands to see what it does and how to use it.
 
 ## Roadmap
 
