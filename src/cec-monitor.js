@@ -88,6 +88,7 @@ export default class CECMonitor extends EventEmitter {
       _SENDED: '_sended',
       _STOP: '_stop',
       _TRAFFIC: '_traffic',
+      _OPCODE: '_opcode',
       _WARNING: '_warning',
       _NOSERIALPORT: '_no_serial_port',
       _NOHDMICORD: '_no_hdmi_cord',
@@ -414,8 +415,8 @@ export default class CECMonitor extends EventEmitter {
 
     packet.data = data ;
     if(packet.event !== null) {
-      // Emit all events to 'event' event
-      this.emit('event',packet) ;
+      // Emit all OPCODE events to '_opcode' event
+      this.emit(CECMonitor.EVENTS._OPCODE,packet) ;
 
       return this.emit(packet.event,packet) ;
     }
