@@ -250,7 +250,7 @@ export default class CECMonitor extends EventEmitter {
   }
 
   /**
-   * Determine when ready for commands
+   * Resolves promise when ready cec-client for commands
    * @return {Promise} Resolves when ready
    */
   get isReady() {
@@ -358,7 +358,37 @@ export default class CECMonitor extends EventEmitter {
       });
   }.bind(this);
 
-  WriteMessage = function(source, target, opcode, args) {
+
+  /**
+   * Send a 'tx' message on CEC bus
+   *
+   * @param {string|number|null} source Logical address for source of message (defaults to own address if null)
+   * @param {string|number} target Logical address for target of message (defaults to broadcast if null)
+   * @param {string|number} opcode Opcode for message expressed as a byte value or STRING label
+   * @param {string|number|array[number]} [args] Optional arguments for opcode, type depending on opcode
+   * @example
+   * monitor.SendMessage(CEC.LogicalAddress.PLAYBACKDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.SET_OSD_NAME,[0x46,0x72,0x69,0x73,0x62,0x65,0x65]);
+   * @example
+   * monitor.SendMessage(4, 15, 70, [70,114,105,115,98,101,101];
+   * @example
+   * monitor.SendMessage('0x4', '0xF', '0x46', [0x46,0x72,0x69,0x73,0x62,0x65,0x65]);
+   * @example
+   * monitor.SendMessage('PLAYBACKDEVICE1','BROADCAST','SET_OSD_NAME','Frisbee');
+   * @example
+   * monitor.SendMessage('playbackdevice1', 'broadcast', 'set_osd_name','Frisbee');
+   * @example
+   * // Can specify physical address as string, using dot notation
+   * monitor.SendMessage(CEC.LogicalAddress.UNREGISTERED, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE,'2.0.0.0');
+   * // Or as an array of bytes
+   * monitor.SendMessage(CEC.LogicalAddress.UNREGISTERED, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE,[0x20,0x0]);
+   * @example
+   * // Default source is the client - default destination is broadcast
+   * monitor.SendMessage(null,null, 'set_osd_name','Frisbee');
+   * @see cec
+   * @see WriteMessage
+   * @return {Promise} When promise is resolved, the message is sent, otherwise if rejected, the cec adapter is not ready
+   */
+  SendMessage = function(source, target, opcode, args) {
     if(typeof source === 'string') {
       if(source.indexOf('0x') === 0){
         source = parseInt(source,16);
@@ -407,6 +437,10 @@ export default class CECMonitor extends EventEmitter {
     }
     // todo: Create classes for complex operations (EG. SELECT_DIGITAL_SERVICE), that can be provided and generate their own arguments array
     // else if(typeof args === 'object' && args instanceof Command)
+    return this.WriteMessage(source,target,opcode,args);
+  };
+
+  WriteMessage = function(source, target, opcode, args) {
     let msg = `tx ${[((source << 4) + target), opcode].concat(args || []).map(h => `0${h.toString(16)}`.substr(-2)).join(':')}`;
     return this.WriteRawMessage(msg);
   }.bind(this);

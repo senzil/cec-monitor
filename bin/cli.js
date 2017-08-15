@@ -134,16 +134,16 @@ monitor.once(CECMonitor.EVENTS._READY, function() {
   // monitor.WriteRawMessage('standby 0');
 
   // cec-client tx commands
-  // monitor.WriteMessage('0x4', '0xF', CEC.Opcode.SET_OSD_NAME,'Frisbee');
-  // monitor.WriteMessage('playbackdevice1', 'broadcast', 'set_osd_name','Frisbee');
-  // monitor.WriteMessage('PLAYBACKDEVICE1', 'BROADCAST', 'SET_OSD_NAME','Frisbee');
-  // monitor.WriteMessage(null,null, 'set_osd_name','Frisbee');
-  // monitor.WriteMessage(monitor.GetLogicalAddress(), CEC.LogicalAddress.BROADCAST, CEC.Opcode.SET_OSD_NAME,'Frisbee');
-  // monitor.WriteMessage(CEC.LogicalAddress.PLAYBACKDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.SET_OSD_NAME,[70,114,105,115,98,101,101]);
-  // monitor.WriteMessage(CEC.LogicalAddress.PLAYBACKDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.SET_OSD_NAME,[0x46,0x72,0x69,0x73,0x62,0x65,0x65]);
+  // monitor.SendMessage('0x4', '0xF', CEC.Opcode.SET_OSD_NAME,'Frisbee');
+  // monitor.SendMessage('playbackdevice1', 'broadcast', 'set_osd_name','Frisbee');
+  // monitor.SendMessage('PLAYBACKDEVICE1', 'BROADCAST', 'SET_OSD_NAME','Frisbee');
+  // monitor.SendMessage(null,null, 'set_osd_name','Frisbee');
+  // monitor.SendMessage(monitor.GetLogicalAddress(), CEC.LogicalAddress.BROADCAST, CEC.Opcode.SET_OSD_NAME,'Frisbee');
+  // monitor.SendMessage(CEC.LogicalAddress.PLAYBACKDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.SET_OSD_NAME,[70,114,105,115,98,101,101]);
+  // monitor.SendMessage(CEC.LogicalAddress.PLAYBACKDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.SET_OSD_NAME,[0x46,0x72,0x69,0x73,0x62,0x65,0x65]);
 
-  // monitor.WriteMessage(CEC.LogicalAddress.UNREGISTERED, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE,'2.0.0.0');
-  // monitor.WriteMessage(CEC.LogicalAddress.UNREGISTERED, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE,[0x20,0x0);
+  // monitor.SendMessage(CEC.LogicalAddress.UNREGISTERED, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE,'2.0.0.0');
+  // monitor.SendMessage(CEC.LogicalAddress.UNREGISTERED, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE,[0x20,0x0);
 
   rl.prompt();
 });
@@ -276,8 +276,8 @@ rl.on('line', function(line) {
     }
     tokens = tokens.slice(0,3); // Strip args from tokens array
     tokens.push(args); // Append args as a single value or an array reference
-    console.log('Calling: monitor.WriteMessage('+JSON.stringify(tokens)+')');
-    monitor.WriteMessage.apply(monitor,tokens);
+    console.log('Calling: monitor.SendMessage('+JSON.stringify(tokens)+')');
+    monitor.SendMessage.apply(monitor,tokens);
     rl.prompt();
     return;
   }
