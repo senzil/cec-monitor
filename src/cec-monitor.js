@@ -88,6 +88,7 @@ export default class CECMonitor extends EventEmitter {
       _SENDED: '_sended',
       _STOP: '_stop',
       _TRAFFIC: '_traffic',
+      _OPCODE: '_opcode',
       _WARNING: '_warning',
       _NOSERIALPORT: '_no_serial_port',
       _NOHDMICORD: '_no_hdmi_cord',
@@ -172,6 +173,18 @@ export default class CECMonitor extends EventEmitter {
   }.bind(this);
 
   WriteMessage = function(source, target, opcode, args) {
+    if(typeof args === 'string') {
+      // If a phyiscal address
+      if(args.match(/^(?:\d+\.){3}\d+$/)) {
+        args = physical2args(args) ;
+      }
+      // Otherwise treat as string argument
+      else {
+        args = args.split('').map(s => s.charCodeAt(0)) ;
+      }
+    }
+    // todo: Create classes for complex operations (EG. SELECT_DIGITAL_SERVICE), that can be provided and generate their own arguments array
+    // else if(typeof args === 'object' && args instanceof Command)
     let msg = `tx ${[((source << 4) + target), opcode].concat(args || []).map(h => `0${h.toString(16)}`.substr(-2)).join(':')}`;
     return this.WriteRawMessage(msg);
   }.bind(this);
@@ -289,164 +302,123 @@ export default class CECMonitor extends EventEmitter {
 
   _processEvents = function(packet) {
 
+    let data = {} ;
     let source, version, status, id, vendor, from, to, osdname;
 
     // Store opcode name as event property
     packet.event = CEC.OpcodeNames[packet.opcode] ;
-
-    // Emit all events to 'event' event
-    this.emit('event',packet) ;
 
     switch (packet.opcode) {
       case CEC.Opcode.ACTIVE_SOURCE:
         if (packet.args.length !== 2) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command ACTIVE_SOURCE with bad formated address');
         }
-        //todo: to add or to change to strings
         source = packet.args[0] << 8 | packet.args[1];
-        return this.emit(CECMonitor.EVENTS.ACTIVE_SOURCE, packet, source);
+        data = {
+          val: source,
+          str: args2physical(packet.args)
+        } ;
+        break ;
 
       case CEC.Opcode.CEC_VERSION:
         if (packet.args.length !==1) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command CEC_VERSION without version');
         }
-        version = packet.args[0];
-        return this.emit(CECMonitor.EVENTS.CEC_VERSION, packet, version);
+        version = packet.args[0] ;
+        data = {
+          val: version,
+          str: CEC.CECVersionNames[version]
+        } ;
+        break ;
 
+      // todo: untested
       case CEC.Opcode.DECK_STATUS:
         if (packet.args.length !== 2) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command DECK_STATUS without Deck Info');
         }
-        status = packet.args[0] << 8 | packet.args[1];
-        return this.emit(CECMonitor.EVENTS.DECK_STATUS, packet, status);
+        status = packet.args[0] << 8 | packet.args[1] ;
+        data = {
+          val: status,
+          str: CEC.DeckStatusNames[status]
+        } ;
+        break ;
 
       case CEC.Opcode.DEVICE_VENDOR_ID:
         if (packet.args.length !== 3) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command DEVICE_VENDOR_ID with bad arguments');
         }
         id = packet.args[0] << 16 | packet.args[1] << 8 | packet.args[2];
-        vendor = '';
-        switch (id){
-          case CEC.VendorId.TOSHIBA:
-            vendor = 'TOSHIBA';
-            break;
-          case CEC.VendorId.SAMSUNG:
-            vendor = 'SAMSUNG';
-            break;
-          case CEC.VendorId.DENON:
-            vendor = 'DENON';
-          break;
-          case CEC.VendorId.MARANTZ:
-            vendor = 'MARANTZ';
-            break;
-          case CEC.VendorId.LOEWE:
-            vendor = 'LOEWE';
-            break;
-          case CEC.VendorId.ONKYO:
-            vendor = 'ONKYO';
-            break;
-          case CEC.VendorId.MEDION:
-            vendor = 'MEDION';
-            break;
-          case CEC.VendorId.TOSHIBA2:
-            vendor = 'TOSHIBA2';
-            break;
-          case CEC.VendorId.PULSE_EIGHT:
-            vendor = 'PULSE_EIGHT';
-            break;
-          case CEC.VendorId.HARMAN_KARDON2:
-            vendor = 'HARMAN_KARDON2';
-            break;
-          case CEC.VendorId.GOOGLE:
-            vendor = 'GOOGLE';
-            break;
-          case CEC.VendorId.AKAI:
-            vendor = 'AKAI';
-            break;
-          case CEC.VendorId.AOC:
-            vendor = 'AOC';
-            break;
-          case CEC.VendorId.PANASONIC:
-            vendor = 'PANASONIC';
-            break;
-          case CEC.VendorId.PHILIPS:
-            vendor = 'PHILIPS';
-            break;
-          case CEC.VendorId.DAEWOO:
-            vendor = 'DAEWOO';
-            break;
-          case CEC.VendorId.YAMAHA:
-            vendor = 'YAMAHA';
-            break;
-          case CEC.VendorId.GRUNDIG:
-            vendor = 'GRUNDIG';
-            break;
-          case CEC.VendorId.PIONEER:
-            vendor = 'PIONEER';
-            break;
-          case CEC.VendorId.LG:
-            vendor = 'LG';
-            break;
-          case CEC.VendorId.SHARP:
-            vendor = 'SHARP';
-            break;
-          case CEC.VendorId.SONY:
-            vendor = 'SONY';
-            break;
-          case CEC.VendorId.BROADCOM:
-            vendor = 'BROADCOM';
-            break;
-          case CEC.VendorId.VIZIO:
-            vendor = 'VIZIO';
-            break;
-          case CEC.VendorId.BENQ:
-            vendor = 'BENQ';
-            break;
-          default:
-            vendor = 'UNKNOWN';
-        }
-        return this.emit(CECMonitor.EVENTS.DEVICE_VENDOR_ID, packet, id, vendor);
+        vendor = CEC.VendorIdNames[id] ;
+        data = {
+          val: id,
+          str: vendor
+        } ;
+        break ;
 
       case CEC.Opcode.REPORT_PHYSICAL_ADDRESS:
         if (packet.args.length !== 3) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command REPORT_PHYSICAL_ADDRESS with bad formated address or device type');
         }
         source = packet.args[0] << 8 | packet.args[1];
-        return this.emit(CECMonitor.EVENTS.REPORT_PHYSICAL_ADDRESS, packet, source, packet.args[2]);
+        data = {
+          val: source,
+          str: args2physical(packet.args)
+        } ;
+        break ;
 
       case CEC.Opcode.REPORT_POWER_STATUS:
         if (packet.args.length !== 1) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command REPORT_POWER_STATUS with bad formated power status');
         }
         status = packet.args[0];
-        return this.emit(CECMonitor.EVENTS.REPORT_POWER_STATUS, packet, status);
+        data = {
+          val: status,
+          str: CEC.PowerStatusNames[status]
+        } ;
+        break ;
 
       case CEC.Opcode.ROUTING_CHANGE:
         if (packet.args.length !== 4) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command ROUTING_CHANGE with bad formated addresses')
         }
-        //todo: to add or to change to strings
         from = packet.args[0] << 8 | packet.args[1];
         to = packet.args[2] << 8 | packet.args[3];
-        return this.emit(CECMonitor.EVENTS.ROUTING_CHANGE, packet, from, to);
+        data = {
+          from: {
+            val: from,
+            str: args2physical(packet.args.slice(0,2))
+          },
+          to: {
+            val: to,
+            str: args2physical(packet.args.slice(2,4))
+          }
+        } ;
+        break ;
 
       case CEC.Opcode.SET_OSD_NAME:
         if (!packet.args.length) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command SET_OSD_NAME without OSD NAME')
         }
         osdname = String.fromCharCode.apply(null, packet.args);
-        return this.emit(CECMonitor.EVENTS.SET_OSD_NAME, packet, osdname);
+        data = {
+          val: osdname,
+          str: osdname
+        } ;
+        break ;
 
       case CEC.Opcode.STANDBY:
         if (packet.args.length !== 0) {
           return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command STANDBY with bad args');
         }
-        return this.emit(CECMonitor.EVENTS.STANDBY, packet);
+        break ;
+    }
 
-      default:
-        if(packet.event !== null) {
-          return this.emit(packet.event,packet) ;
-        }
+    packet.data = data ;
+    if(packet.event !== null) {
+      // Emit all OPCODE events to '_opcode' event
+      this.emit(CECMonitor.EVENTS._OPCODE,packet) ;
+
+      return this.emit(packet.event,packet) ;
     }
   };
 
@@ -499,4 +471,32 @@ export default class CECMonitor extends EventEmitter {
   _processError = function(data){
     return this.emit(CECMonitor.EVENTS._ERROR, data);
   }.bind(this);
+}
+
+/**
+ * Convert array of values from CEC into string formatted physical address
+ * @param {number[]} value An array of byte values
+ * @return {string} Physical address in . notation ie 0.0.0.0
+ */
+function args2physical(value) {
+  var v = value[0] << 8 | value[1] ;
+
+  return ['0','0','0','0'].concat(v.toString(16).toLocaleUpperCase().split('')).slice(-4).join('.') ;
+}
+
+/**
+ * Convert string formatted phyiscal address of form 0.0.0.0 to two-byte array
+ *
+ * @param {string} address Physical address to convert
+ * @return {number[]} A two-byte encoded verstion represented as an array
+ */
+function physical2args(address) {
+  var s = address.split('.').join('') ;
+  var v = parseInt(s,16) ;
+  var arr = [] ;
+
+  arr.unshift(v & 0xFF) ;
+  v >>= 8 ;
+  arr.unshift(v & 0xFF) ;
+  return arr ;
 }
