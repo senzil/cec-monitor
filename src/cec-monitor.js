@@ -260,6 +260,31 @@ export default class CECMonitor extends EventEmitter {
   }
 
   /**
+   * Get copy of internal state information on CEC bus
+   *
+   * @param {number|string} [address] Optional address to request state for.
+   * If omitted, return an array of all addresses indexed by logical address
+   *
+   * @return {object|array[object]} An object or array of objects
+   * with index as the logical device address and/or values an object
+   * representing state of the logical address
+   */
+  GetState = function(address) {
+    if(isPhysical(address)) {
+      address = this.p2l[address];
+      if(address === undefined) {
+        return null ;
+      }
+    }
+    // Return copy of our state information
+    console.log('address='+address) ;
+    if(address === undefined || address === '') {
+      return JSON.parse(JSON.stringify(this.cache));
+    }
+    return JSON.parse(JSON.stringify(this.cache[address]));
+  }.bind(this);
+
+  /**
    * Get physical address of this instance
    * @return {string} Physical address used by this instance
    */
