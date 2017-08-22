@@ -129,7 +129,9 @@ export default class CECMonitor extends EventEmitter {
       }
     };
     // Maintain index pf physical addresses mapped to logical address
-    this.p2l = {};
+    this.p2l = {
+      "0.0.0.0": 0
+    };
     this.active_source = null; // Default not known
 
     process.on('beforeExit', this.Stop);
