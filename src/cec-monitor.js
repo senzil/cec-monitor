@@ -803,5 +803,8 @@ function physical2args(address) {
  * @return {boolean} True if it matches form 0.0.0.0 otherwise false
  */
 function isPhysical(address) {
+  if(typeof address !== 'string')
+    return false ;
+
   return (address.toString().match(/^(?:\d+\.){3}\d+$/) !== null);
 }
