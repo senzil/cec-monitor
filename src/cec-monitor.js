@@ -277,7 +277,6 @@ export default class CECMonitor extends EventEmitter {
       }
     }
     // Return copy of our state information
-    console.log('address='+address) ;
     if(address === undefined || address === '') {
       return JSON.parse(JSON.stringify(this.cache));
     }
