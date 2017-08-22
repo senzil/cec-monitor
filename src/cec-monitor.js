@@ -417,8 +417,8 @@ export default class CECMonitor extends EventEmitter {
       if(opcode.indexOf('0x') === 0){
         opcode = parseInt(  opcode,16);
       }
-      else if(CEC.LogicalAddress.hasOwnProperty(opcode.toLocaleUpperCase())) {
-        opcode = CEC.LogicalAddress[opcode.toLocaleUpperCase()];
+      else if(CEC.Opcode.hasOwnProperty(opcode.toLocaleUpperCase())) {
+        opcode = CEC.Opcode[opcode.toLocaleUpperCase()];
       }
     }
 
