@@ -2,12 +2,12 @@
  * Created by pablo on 6/14/17.
  */
 
-"use strict";
+'use strict';
 
-var CECMonitor = require('../index').CECMonitor;
-var CEC = require('../index').CEC;
+let CECMonitor = require('../index').CECMonitor;
+let CEC = require('../index').CEC;
 
-var monitor = new CECMonitor('CECMONITOR', {
+let monitor = new CECMonitor('CECMONITOR', {
   debug: true,
   player: true,
   hdmiport: 2,
@@ -69,17 +69,17 @@ monitor.on(CECMonitor.EVENTS.ROUTING_CHANGE, function(packet, from, to) {
   console.log(packet, from, to);
 });
 
-monitor.on(CECMonitor.EVENTS.STANDBY, function(packet) {
-  if(packet.source === CEC.LogicalAddress.TV){
-    status === CEC.PowerStatus.STANDBY;
+monitor.on(CECMonitor.EVENTS.STANDBY, function (packet) {
+  if (packet.source === CEC.LogicalAddress.TV) {
+    status = CEC.PowerStatus.STANDBY;
   }
-});
+})
 
-setInterval(function(){
-  if(status !== CEC.PowerStatus.ON) {
+setInterval(function () {
+  if (status !== CEC.PowerStatus.ON) {
     monitor.WriteMessage(CEC.LogicalAddress.RECORDINGDEVICE1, CEC.LogicalAddress.TV, CEC.Opcode.IMAGE_VIEW_ON);
   } else {
     monitor.WriteMessage(CEC.LogicalAddress.RECORDINGDEVICE1, CEC.LogicalAddress.TV, CEC.Opcode.STANDBY);
   }
   setTimeout(() => monitor.WriteMessage(CEC.LogicalAddress.RECORDINGDEVICE1, CEC.LogicalAddress.TV, CEC.Opcode.GIVE_DEVICE_POWER_STATUS), 5000);
-}, 60000);
+}, 60000)

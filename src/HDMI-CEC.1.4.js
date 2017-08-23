@@ -2,9 +2,9 @@
  * Created by pablo on 6/13/17.
  */
 
-"use strict";
+'use strict'
 
-var data = {
+let data = {
   VendorId: {
     TOSHIBA: 0x000039,
     SAMSUNG: 0x0000F0,
@@ -57,20 +57,20 @@ var data = {
   },
 
   Opcode: {
-    //Used by a new source to indicate that it has started to transmit a stream OR used in response to a "Request Active Source" (Brodcast). This message is used in several features : One Touch Play,Routing Control
+    // Used by a new source to indicate that it has started to transmit a stream OR used in response to a "Request Active Source" (Brodcast). This message is used in several features : One Touch Play,Routing Control
     ACTIVE_SOURCE: 0x82,
-    //Sent by a source device to the TV whenever it enters the active state (alternatively it may send "Text View On") (Directly addressed)
+    // Sent by a source device to the TV whenever it enters the active state (alternatively it may send "Text View On") (Directly addressed)
     IMAGE_VIEW_ON: 0x04,
-    //As "Image View On", but should also remove any text, menus and PIP windows from the TV’s display (Directly addressed)
+    // As "Image View On", but should also remove any text, menus and PIP windows from the TV’s display (Directly addressed)
     TEXT_VIEW_ON: 0x0D,
 
-    //Used by the currently active source to inform the TV that it has no video to be presented to the user, or is going into standby as the result of a local user command on the device (Directly addressed)
+    // Used by the currently active source to inform the TV that it has no video to be presented to the user, or is going into standby as the result of a local user command on the device (Directly addressed)
     INACTIVE_SOURCE: 0x9D,
-    //Used by a new device to discover the status of the system (Broadcast)
+    // Used by a new device to discover the status of the system (Broadcast)
     REQUEST_ACTIVE_SOURCE: 0x85,
-    //Sent by a CEC Switch when it is manually switched to inform all other devices on the network that the active route below the switch has changed (Broadcast)
+    // Sent by a CEC Switch when it is manually switched to inform all other devices on the network that the active route below the switch has changed (Broadcast)
     ROUTING_CHANGE: 0x80,
-    //Sent by a CEC Switch to indicate the active route below the switch (Broadcast)
+    // Sent by a CEC Switch to indicate the active route below the switch (Broadcast)
     ROUTING_INFORMATION: 0x81,
     //Used by the TV to request a streaming path from the specified address (Broadcast)
     SET_STREAM_PATH: 0x86,
@@ -522,16 +522,18 @@ var data = {
     INVALID_OPERAND: 0x03,
     REFUSED: 0x04
   }
-};
+}
 
 
 // Calculate and store reverse mapping of names to codes
 // e.g. AbortReasonNames[0x00] = 'UNRECOGNIZED_OPCODE';
 for (let section in data) {
-	data[section+'Names'] = {};
-	for (let key in data[section]) {
-		data[section+'Names'][data[section][key]] = key;
-	}
+  data[section+'Names'] = {}
+  for (let key in data[section]) {
+    if(data[section].hasOwnProperty(key)){
+      data[section+'Names'][data[section][key]] = key
+    }
+  }
 }
 
-export default data;
+export default data
