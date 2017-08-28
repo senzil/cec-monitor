@@ -263,22 +263,20 @@ export default class CECMonitor extends EventEmitter {
    * Get copy of internal state information on CEC bus
    *
    * @param {number|string} [address] Optional address to request state for.
+   * (physical, logical or CEC.LogicalAddress names)
    * If omitted, return an array of all addresses indexed by logical address
    *
    * @return {object|array[object]} An object or array of objects
+   * @see WriteMessage
    * with index as the logical device address and/or values an object
    * representing state of the logical address
    */
   GetState = function(address) {
-    if(isPhysical(address)) {
-      address = this.p2l[address]
-      if(address === undefined) {
-        return null 
-      }
-    }
+    address = parseAddress.call(this,address,undefined) ;
+
     // Return copy of our state information
-    if(address === undefined || address === '') {
-      return JSON.parse(JSON.stringify(this.cache))
+    if(address === undefined) {
+      return JSON.parse(JSON.stringify(this.cache)) ;
     }
     return JSON.parse(JSON.stringify(this.cache[address]))
   }.bind(this);
@@ -313,7 +311,12 @@ export default class CECMonitor extends EventEmitter {
    * @return {string|null}
    */
   Logical2Physical = function (logical) {
-    return this.cache[logical].physical
+    logical = parseAddress.call(this,logical,null) ;
+
+    if(logical === null) {
+      return null ;
+    }
+    return this.cache[logical].physical ;
   }.bind(this);
 
   /**
@@ -322,48 +325,53 @@ export default class CECMonitor extends EventEmitter {
    * @return {number|null}
    */
   Physical2Logical = function (physical) {
-    let l = this.p2l[physical]
-    return (l === undefined) ? null : l
+    physical = parseAddress.call(this,physical,null) ;
+    return physical ;
   }.bind(this);
 
   /**
    * Get OSD name for given address
-   * @param {string|number} address (logical or physical)
+   * @param {string|number} address (physical, logical or CEC.LogicalAddress names)
+   * @see WriteMessage
    * @return {string}
    */
   GetOSDName = function(address) {
-    if(isPhysical(address)) {
-      address = this.p2l[address]
+    address = parseAddress.call(this,address,null) ;
+
+    if(address === null) {
+      return '' ;
     }
     return this.cache[address].osdname
   }.bind(this);
 
   /**
    * Get power status for given address
-   * @param {string|number} address (logical or physical)
+   * @param {string|number} address (physical, logical or CEC.LogicalAddress names)
+   * @see WriteMessage
    * @return {number|null}
    */
   GetPowerStatus = function(address) {
-    if(isPhysical(address)) {
-      address = this.p2l[address]
+    address = parseAddress.call(this,address,null) ;
+
+    if(address === null) {
+      return null ;
     }
     return this.cache[address].power
   }.bind(this);
 
   /**
    * Get power status for given address as string
-   * @param {string|number} address (logical or physical)
+   * @param {string|number} address (physical, logical or CEC.LogicalAddress names)
+   * @see WriteMessage
    * @return {string|null}
    */
   GetPowerStatusName = function(address) {
-    if(isPhysical(address)) {
-      address = this.p2l[address]
-    }
-    var power = this.cache[address].power
+    var power = this.GetPowerStatus(address) ;
+
     if(power === null) {
       return power
     }
-    return CEC.PowerStatusNames[this.cache[address].power]
+    return CEC.PowerStatusNames[power] ;
   }.bind(this);
 
   /**
@@ -415,29 +423,9 @@ export default class CECMonitor extends EventEmitter {
    * @return {Promise} When promise is resolved, the message is sent, otherwise if rejected, the cec adapter is not ready
    */
   SendMessage = function(source, target, opcode, args) {
-    if(typeof source === 'string') {
-      if(source.indexOf('0x') === 0){
-        source = parseInt(source,16)
-      }
-      else if(CEC.LogicalAddress.hasOwnProperty(source.toLocaleUpperCase())) {
-        source = CEC.LogicalAddress[source.toLocaleUpperCase()]
-      }
-    }
-    else if(typeof source !== 'number') {
-      source = this.GetLogicalAddress() // default to this instance logical address
-    }
+    source = parseAddress.call(this,source,this.GetLogicalAddress()) ;
 
-    if(typeof target === 'string') {
-      if(target.indexOf('0x') === 0){
-        target = parseInt(  target,16)
-      }
-      else if(CEC.LogicalAddress.hasOwnProperty(target.toLocaleUpperCase())) {
-        target = CEC.LogicalAddress[target.toLocaleUpperCase()]
-      }
-    }
-    else if(typeof target !== 'number') {
-      target = CEC.LogicalAddress.BROADCAST // default to the broadcast logical address
-    }
+    target = parseAddress.call(this,target,CEC.LogicalAddress.BROADCAST) ;
 
     if(typeof opcode === 'string') {
       if(opcode.indexOf('0x') === 0){
@@ -828,4 +816,31 @@ function isPhysical(address) {
     return false 
 
   return (address.toString().match(/^(?:\d+\.){3}\d+$/) !== null)
+}
+
+/**
+ * Parse any address format and convert to logical address
+ * @param {number|string} address Address to parse/convert to logical address
+ * @param {number} def Default logical address if address invalid
+ */
+function parseAddress(address,def) {
+  if(typeof address === 'string') {
+    if(address.indexOf('0x') === 0){
+      address = parseInt(address,16) ;
+    }
+    else if(isPhysical(address)) {
+      address = (this.p2l.hasOwnProperty(address)) ? this.p2l[address] : def ;
+    }
+    else if(CEC.LogicalAddress.hasOwnProperty(address.toLocaleUpperCase())) {
+      address = CEC.LogicalAddress[address.toLocaleUpperCase()] ;
+    }
+  }
+
+  if(isNaN(address) || address === null) {
+    address = def ;
+  }
+  else if(address > 15 || address < 0) {
+    address = def ;
+  }
+  return address ;
 }
