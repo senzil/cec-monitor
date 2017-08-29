@@ -522,7 +522,7 @@ export default class CECMonitor extends EventEmitter {
       this._processWarning(data)
     } else if(/^ERROR:.*/g.test(data)){
       this._processError(data)
-    } else if(/(^no\sserial\sport\sgiven)|(^Connection\slost)/gu.test(data)){
+    } else if(/(^no serial port given\. trying autodetect: FAILED)|(^Connection lost)/gu.test(data)) {
       if(this.no_serial.reconnect) {
         this.recconnect_intent = true
         this.ready = false
