@@ -530,7 +530,7 @@ let data = {
 for (let section in data) {
   data[section+'Names'] = {}
   for (let key in data[section]) {
-    if(data[section].hasOwnProperty(key)){
+    if (data[section].hasOwnProperty(key)){
       data[section+'Names'][data[section][key]] = key
     }
   }

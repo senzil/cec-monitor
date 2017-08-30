@@ -135,11 +135,11 @@ export default class CECMonitor extends EventEmitter {
     this.active_source = null // Default not known
 
     process.on('beforeExit', this.Stop)
-    process.on('exit',this.Stop)
+    process.on('exit', this.Stop)
 
-    if(!options.processManaged) {
+    if (!options.processManaged) {
       ON_DEATH({uncaughtException: true})((signal, err) => {
-        if(err){
+        if (err){
           console.error(err)
         }
         process.exit()
@@ -147,19 +147,19 @@ export default class CECMonitor extends EventEmitter {
     }
 
     this.params = []
-    if(options.recorder !== false){
+    if (options.recorder !== false){
       this.params.push('-t', 'r')
     }
 
-    if(options.player === true){
+    if (options.player === true){
       this.params.push('-t', 'p')
     }
 
-    if(options.tuner === true){
+    if (options.tuner === true){
       this.params.push('-t', 't')
     }
 
-    if(options.audio === true){
+    if (options.audio === true){
       this.params.push('-t', 'a')
     }
 
@@ -272,11 +272,11 @@ export default class CECMonitor extends EventEmitter {
    * representing state of the logical address
    */
   GetState = function(address) {
-    address = parseAddress.call(this,address,undefined) ;
+    address = parseAddress.call(this, address, undefined)
 
     // Return copy of our state information
-    if(address === undefined) {
-      return JSON.parse(JSON.stringify(this.cache)) ;
+    if (address === undefined) {
+      return JSON.parse(JSON.stringify(this.cache))
     }
     return JSON.parse(JSON.stringify(this.cache[address]))
   }.bind(this);
@@ -311,12 +311,12 @@ export default class CECMonitor extends EventEmitter {
    * @return {string|null}
    */
   Logical2Physical = function (logical) {
-    logical = parseAddress.call(this,logical,null) ;
+    logical = parseAddress.call(this, logical, null)
 
-    if(logical === null) {
-      return null ;
+    if (logical === null) {
+      return null
     }
-    return this.cache[logical].physical ;
+    return this.cache[logical].physical
   }.bind(this);
 
   /**
@@ -325,8 +325,8 @@ export default class CECMonitor extends EventEmitter {
    * @return {number|null}
    */
   Physical2Logical = function (physical) {
-    physical = parseAddress.call(this,physical,null) ;
-    return physical ;
+    physical = parseAddress.call(this, physical, null)
+    return physical
   }.bind(this);
 
   /**
@@ -336,10 +336,10 @@ export default class CECMonitor extends EventEmitter {
    * @return {string}
    */
   GetOSDName = function(address) {
-    address = parseAddress.call(this,address,null) ;
+    address = parseAddress.call(this, address, null)
 
-    if(address === null) {
-      return '' ;
+    if (address === null) {
+      return ''
     }
     return this.cache[address].osdname
   }.bind(this);
@@ -351,10 +351,10 @@ export default class CECMonitor extends EventEmitter {
    * @return {number|null}
    */
   GetPowerStatus = function(address) {
-    address = parseAddress.call(this,address,null) ;
+    address = parseAddress.call(this, address, null)
 
-    if(address === null) {
-      return null ;
+    if (address === null) {
+      return null
     }
     return this.cache[address].power
   }.bind(this);
@@ -366,12 +366,12 @@ export default class CECMonitor extends EventEmitter {
    * @return {string|null}
    */
   GetPowerStatusName = function(address) {
-    var power = this.GetPowerStatus(address) ;
+    var power = this.GetPowerStatus(address)
 
-    if(power === null) {
+    if (power === null) {
       return power
     }
-    return CEC.PowerStatusNames[power] ;
+    return CEC.PowerStatusNames[power]
   }.bind(this);
 
   /**
@@ -423,26 +423,26 @@ export default class CECMonitor extends EventEmitter {
    * @return {Promise} When promise is resolved, the message is sent, otherwise if rejected, the cec adapter is not ready
    */
   SendMessage = function(source, target, opcode, args) {
-    source = parseAddress.call(this,source,this.GetLogicalAddress()) ;
+    source = parseAddress.call(this, source, this.GetLogicalAddress())
 
-    target = parseAddress.call(this,target,CEC.LogicalAddress.BROADCAST) ;
+    target = parseAddress.call(this, target, CEC.LogicalAddress.BROADCAST)
 
-    if(typeof opcode === 'string') {
-      if(opcode.indexOf('0x') === 0){
-        opcode = parseInt(  opcode,16)
+    if (typeof opcode === 'string') {
+      if (opcode.indexOf('0x') === 0){
+        opcode = parseInt(opcode, 16)
       }
-      else if(CEC.Opcode.hasOwnProperty(opcode.toLocaleUpperCase())) {
+      else if (CEC.Opcode.hasOwnProperty(opcode.toLocaleUpperCase())) {
         opcode = CEC.Opcode[opcode.toLocaleUpperCase()]
       }
     }
 
-    if(typeof args === 'string') {
+    if (typeof args === 'string') {
       // If a phyiscal address
-      if(isPhysical(args)) {
+      if (isPhysical(args)) {
         args = physical2args(args)
       }
-      else if(args.indexOf('0x') === 0){
-        args = parseInt(args,16)
+      else if (args.indexOf('0x') === 0){
+        args = parseInt(args, 16)
       }
       // Otherwise treat as string argument
       else {
@@ -451,7 +451,7 @@ export default class CECMonitor extends EventEmitter {
     }
     // todo: Create classes for complex operations (EG. SELECT_DIGITAL_SERVICE), that can be provided and generate their own arguments array
     // else if(typeof args === 'object' && args instanceof Command)
-    return this.WriteMessage(source,target,opcode,args)
+    return this.WriteMessage(source, target, opcode, args)
   };
 
   WriteMessage = function(source, target, opcode, args) {
@@ -460,7 +460,7 @@ export default class CECMonitor extends EventEmitter {
   }.bind(this);
 
   Stop = function() {
-    if(this.client) {
+    if (this.client) {
       this.client.kill('SIGINT')
       this._onClose()
     }
@@ -476,42 +476,42 @@ export default class CECMonitor extends EventEmitter {
 
   _onClose = function() {
     this.client = null
-    if(this.autorestarting) {
+    if (this.autorestarting) {
       setTimeout(this._initCecClient, 15000)
     }
-    else if(this.no_serial.trigger_stop || !this.recconnect_intent) {
+    else if (this.no_serial.trigger_stop || !this.recconnect_intent) {
       return this.emit(CECMonitor.EVENTS._STOP)
-    } else if(this.recconnect_intent) {
+    } else if (this.recconnect_intent) {
       setTimeout(this._initCecClient, this.no_serial.wait_time * 1000)
     }
   }.bind(this);
 
   _checkReady = function(resolve) {
-    if(this.ready) {
+    if (this.ready) {
       return resolve()
     }
 
-    setTimeout(() => this._checkReady(resolve),1000)
+    setTimeout(() => this._checkReady(resolve), 1000)
   }.bind(this);
 
   _processStdOut = function(data, cb) {
-    if(/^TRAFFIC:.*/g.test(data)){
+    if (/^TRAFFIC:.*/g.test(data)){
       this._processTraffic(data)
-    } else if(/^DEBUG:.*/g.test(data)) {
+    } else if (/^DEBUG:.*/g.test(data)) {
       this._processDebug(data)
-    } else if(/^NOTICE:.*/g.test(data)){
+    } else if (/^NOTICE:.*/g.test(data)){
       this._processNotice(data)
-    } else if(/^waiting for input.*/g.test(data)) {
+    } else if (/^waiting for input.*/g.test(data)) {
       this.autorestarting = false
       this.recconnect_intent = false
       this.ready = true
       this.emit(CECMonitor.EVENTS._READY)
-    } else if(/^WARNING:.*/g.test(data)){
+    } else if (/^WARNING:.*/g.test(data)){
       this._processWarning(data)
-    } else if(/^ERROR:.*/g.test(data)){
+    } else if (/^ERROR:.*/g.test(data)){
       this._processError(data)
-    } else if(/(^no serial port given\. trying autodetect: FAILED)|(^Connection lost)/gu.test(data)) {
-      if(this.no_serial.reconnect) {
+    } else if (/(^no serial port given\. trying autodetect: FAILED)|(^Connection lost)/gu.test(data)) {
+      if (this.no_serial.reconnect) {
         this.recconnect_intent = true
         this.ready = false
       }
@@ -525,7 +525,7 @@ export default class CECMonitor extends EventEmitter {
   _readPacket = function(plain) {
     const regex = /^(TRAFFIC|DEBUG):\s\[\s*(\d*)\]\s(<<|>>)\s(([\d\w]{2}[:]?)+)$/gu
     let match = regex.exec(plain)
-    if(match) {
+    if (match) {
 
       let tokens = match[4].split(':').map(h => parseInt(h, 16))
 
@@ -552,13 +552,13 @@ export default class CECMonitor extends EventEmitter {
 
     let packet = this._readPacket(data)
 
-    if(packet) {
-      if(packet.flow === 'IN') {
+    if (packet) {
+      if (packet.flow === 'IN') {
         this.emit(CECMonitor.EVENTS._RECEIVED, packet)
       } else {
         this.emit(CECMonitor.EVENTS._SENDED, packet)
       }
-      if(!packet.opcode){
+      if (!packet.opcode){
         this.emit(CECMonitor.EVENTS.POLLING_MESSAGE, packet)
       } else {
         this._processEvents(packet)
@@ -659,15 +659,15 @@ export default class CECMonitor extends EventEmitter {
       from = packet.args[0] << 8 | packet.args[1]
       to = packet.args[2] << 8 | packet.args[3]
       // Update our records
-      this.active_source = args2physical(packet.args.slice(2,4))
+      this.active_source = args2physical(packet.args.slice(2, 4))
       data = {
         from: {
           val: from,
-          str: args2physical(packet.args.slice(0,2))
+          str: args2physical(packet.args.slice(0, 2))
         },
         to: {
           val: to,
-          str: args2physical(packet.args.slice(2,4))
+          str: args2physical(packet.args.slice(2, 4))
         }
       }
       break
@@ -690,15 +690,15 @@ export default class CECMonitor extends EventEmitter {
         return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command STANDBY with bad args')
       }
       // If we have received a standby, query devices for power status
-      if(packet.target === 15) { // Query all
+      if (packet.target === 15) { // Query all
         setTimeout(() => {
           Object.keys(this.cache).forEach(target => {
-            this.SendMessage(null,target,CEC.Opcode.GIVE_DEVICE_POWER_STATUS)
+            this.SendMessage(null, target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)
           })
-        },5000)
+        }, 5000)
       }
       else { // Otherwise just target
-        setTimeout(() => {this.SendMessage(null,packet.target,CEC.Opcode.GIVE_DEVICE_POWER_STATUS)},3000)
+        setTimeout(() => {this.SendMessage(null, packet.target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)}, 3000)
       }
       break
 
@@ -708,27 +708,27 @@ export default class CECMonitor extends EventEmitter {
         return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command IMAGE_VIEW_ON with bad args')
       }
       // If we have received an image_view_on, query device for power status
-      setTimeout(() => {this.SendMessage(null,packet.target,CEC.Opcode.GIVE_DEVICE_POWER_STATUS)},3000)
+      setTimeout(() => {this.SendMessage(null, packet.target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)}, 3000)
       break
     }
 
     packet.data = data
-    if(packet.event !== null) {
+    if (packet.event !== null) {
       // Emit all OPCODE events to '_opcode' event
-      this.emit(CECMonitor.EVENTS._OPCODE,packet)
+      this.emit(CECMonitor.EVENTS._OPCODE, packet)
 
-      return this.emit(packet.event,packet)
+      return this.emit(packet.event, packet)
     }
   };
 
   _processNotice = function(data) {
     const regexLogical = /logical\saddress\(es\)\s=\s(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu
     let match = regexLogical.exec(data)
-    if(match) {
+    if (match) {
       this.address.primary = parseInt(match[2], 10)
       this.cache[this.address.primary].osdname = this.OSDName
       this.address.logical = {}
-      while(match){
+      while (match){
         this.address.logical[match[2]] = true
         this.cache[match[2]].osdname = this.OSDName
         match = regexLogical.exec(data)
@@ -737,14 +737,14 @@ export default class CECMonitor extends EventEmitter {
 
     const regexDevice = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),/gu
     match = regexDevice.exec(data)
-    if(match) {
+    if (match) {
       this.address.base = parseInt(match[1], 10)
       this.address.hdmi = parseInt(match[2], 10)
     }
 
     const regexPhysical = /physical\saddress:\s([\w.]+)/gu
     match = regexPhysical.exec(data)
-    if(match) {
+    if (match) {
       this.address.physical = match[1]
       Object.keys(this.address.logical).forEach( s => {
         this.cache[s].physical = this.address.physical
@@ -756,16 +756,16 @@ export default class CECMonitor extends EventEmitter {
   }.bind(this);
 
   _processDebug = function(data){
-    if(/TRANSMIT_FAILED_ACK/gu.test(data)){
+    if (/TRANSMIT_FAILED_ACK/gu.test(data)){
       return this.emit(CECMonitor.EVENTS._NOHDMICORD)
     }
-    if(this.debug) {
+    if (this.debug) {
       return this.emit(CECMonitor.EVENTS._DEBUG, data)
     }
   }.bind(this);
 
   _processWarning = function(data){
-    if(/COMMAND_REJECTED/gu.test(data)){
+    if (/COMMAND_REJECTED/gu.test(data)){
       this.ready = false
       this.autorestarting = true
       this.Stop()
@@ -786,7 +786,7 @@ export default class CECMonitor extends EventEmitter {
 function args2physical(value) {
   let v = value[0] << 8 | value[1]
 
-  return ['0','0','0','0'].concat(v.toString(16).toLocaleUpperCase().split('')).slice(-4).join('.')
+  return ['0', '0', '0', '0'].concat(v.toString(16).toLocaleUpperCase().split('')).slice(-4).join('.')
 }
 
 /**
@@ -797,7 +797,7 @@ function args2physical(value) {
  */
 function physical2args(address) {
   let s = address.split('.').join('')
-  let v = parseInt(s,16)
+  let v = parseInt(s, 16)
   let arr = []
 
   arr.unshift(v & 0xFF)
@@ -812,8 +812,8 @@ function physical2args(address) {
  * @return {boolean} True if it matches form 0.0.0.0 otherwise false
  */
 function isPhysical(address) {
-  if(typeof address !== 'string')
-    return false 
+  if (typeof address !== 'string')
+    return false
 
   return (address.toString().match(/^(?:\d+\.){3}\d+$/) !== null)
 }
@@ -823,24 +823,24 @@ function isPhysical(address) {
  * @param {number|string} address Address to parse/convert to logical address
  * @param {number} def Default logical address if address invalid
  */
-function parseAddress(address,def) {
-  if(typeof address === 'string') {
-    if(address.indexOf('0x') === 0){
-      address = parseInt(address,16) ;
+function parseAddress(address, def) {
+  if (typeof address === 'string') {
+    if (address.indexOf('0x') === 0){
+      address = parseInt(address, 16)
     }
-    else if(isPhysical(address)) {
-      address = (this.p2l.hasOwnProperty(address)) ? this.p2l[address] : def ;
+    else if (isPhysical(address)) {
+      address = (this.p2l.hasOwnProperty(address)) ? this.p2l[address] : def
     }
-    else if(CEC.LogicalAddress.hasOwnProperty(address.toLocaleUpperCase())) {
-      address = CEC.LogicalAddress[address.toLocaleUpperCase()] ;
+    else if (CEC.LogicalAddress.hasOwnProperty(address.toLocaleUpperCase())) {
+      address = CEC.LogicalAddress[address.toLocaleUpperCase()]
     }
   }
 
-  if(isNaN(address) || address === null) {
-    address = def ;
+  if (isNaN(address) || address === null) {
+    address = def
   }
-  else if(address > 15 || address < 0) {
-    address = def ;
+  else if (address > 15 || address < 0) {
+    address = def
   }
-  return address ;
+  return address
 }

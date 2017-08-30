@@ -25,6 +25,12 @@
             "error",
             "never"
         ],
+        "keyword-spacing": [
+            "error"
+        ],
+        "comma-spacing": [
+            "error"
+        ],
         "no-console": "off"
     }
 }
