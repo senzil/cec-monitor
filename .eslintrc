@@ -31,6 +31,10 @@
         "comma-spacing": [
             "error"
         ],
-        "no-console": "off"
+        "no-console": "off",
+        "arrow-body-style": [
+            "error",
+            "as-needed"
+        ]
     }
 }

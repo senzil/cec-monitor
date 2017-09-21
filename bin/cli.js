@@ -29,6 +29,7 @@ var commands = [
   "addresses", // Output current state information for all logical addresses
   "osdname", // Output state of name for logical or physical address
   "power", // Output state of power for logical or physical address
+  "state", // Get current state cache
   // cec-client commands
   "ad",
   "as",
@@ -97,6 +98,9 @@ var functions = {
   osdname: function (address) {
     console.log('OSD name: '+monitor.GetOSDName(address));
   },
+  state: function () {
+    console.log(monitor.GetState());
+  },
   quit: function () {
     monitor.Stop();
     process.exit(0);
@@ -110,9 +114,9 @@ var functions = {
 //All config options are optionals
 var monitor = new CECMonitor('cec-mon-cli', {
   debug: false,           // enable/disabled debug events from cec-client
-  hdmiport: 1,            // set inital hdmi port
+  hdmiport: 2,            // set inital hdmi port
   processManaged: false,  // set/unset handlers to avoid unclear process exit.
-  recorder: false,         //enable cec-client as recorder device
+  recorder: true,         //enable cec-client as recorder device
   player: true,          //enable cec-client as player device
   tuner: false,           //enable cec-client as tuner device
   audio: false,           //enable cec-client as audio system device

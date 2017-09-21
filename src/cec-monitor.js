@@ -2,11 +2,19 @@
  * Created by pablo on 6/13/17.
  */
 
+'use strict'
+
+// eslint-disable-next-line no-unused-vars
+import regeneratorRuntime from 'regenerator-runtime'
+
 import {spawn} from 'child_process'
 import {EventEmitter} from 'events'
 import es from 'event-stream'
 import CEC from './HDMI-CEC.1.4'
 import ON_DEATH from 'death'
+import CECTimeoutError from './TimeoutError'
+import StateManager from './StateManager'
+import Converter from './Converter'
 
 export default class CECMonitor extends EventEmitter {
 
@@ -16,23 +24,24 @@ export default class CECMonitor extends EventEmitter {
   ready;
   address;
   no_serial;
-  autorestart;
-  autorestarting;
-  recconnect_intent;
+  auto_restart;
+  auto_restarting;
+  reconnect_intent;
   params;
-  cache;
-  p2l;
+  state_manager;
+  status_cache_timeout;
+  auto_update_status_interval;
   active_source;
 
   constructor(OSDName, options) {
     super()
     this.ready = false
-    this.autorestarting = false
+    this.auto_restarting = false
     this.OSDName = OSDName || 'cec-monitor'
-    this.autorestart = options.autorestart ? options.autorestart : true
+    this.auto_restart = options.auto_restart ? options.auto_restart : true
     this.address = {
-      primary: CEC.LogicalAddress.UNKNOWN,
       physical: 0xFFFF,
+      primary: CEC.LogicalAddress.UNKNOWN,
       base: CEC.LogicalAddress.UNKNOWN,
       hdmi: options.hdmiport || 1
     }
@@ -42,96 +51,12 @@ export default class CECMonitor extends EventEmitter {
       trigger_stop: false
     }
     this.no_serial = Object.assign(this.no_serial, options.no_serial)
-    this.recconnect_intent = false
+    this.reconnect_intent = false
     this.debug = options.debug
 
     // Cache of data about logical addresses
-    this.cache = {
-      0: {
-        physical: '0.0.0.0',
-        power: null,
-        osdname: 'TV'
-      },
-      1: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      2: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      3: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      4: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      5: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      6: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      7: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      8: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      9: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      10: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      11: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      12: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      13: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      14: {
-        physical: null,
-        power: null,
-        osdname: ''
-      },
-      15: {
-        physical: null,
-        power: null,
-        osdname: ''
-      }
-    }
-    // Maintain index pf physical addresses mapped to logical address
-    this.p2l = {
-      '0.0.0.0': 0
-    }
+    this.state_manager = new StateManager()
+
     this.active_source = null // Default not known
 
     process.on('beforeExit', this.Stop)
@@ -142,7 +67,7 @@ export default class CECMonitor extends EventEmitter {
         if (err){
           console.error(err)
         }
-        process.exit()
+        return process.exit()
       })
     }
 
@@ -165,7 +90,7 @@ export default class CECMonitor extends EventEmitter {
 
     this.params.push('-o', this.OSDName, '-d', '31', '-p', this.address.hdmi.toString())
 
-    this._initCecClient()
+    _initCecClient.call(this)
   }
 
   static get EVENTS() {
@@ -256,7 +181,7 @@ export default class CECMonitor extends EventEmitter {
    * @return {Promise} Resolves when ready
    */
   get isReady() {
-    return new Promise(this._checkReady)
+    return new Promise(_checkReady.bind(this))
   }
 
   /**
@@ -272,14 +197,15 @@ export default class CECMonitor extends EventEmitter {
    * representing state of the logical address
    */
   GetState = function(address) {
-    address = parseAddress.call(this, address, undefined)
+    address = _parseAddress.call(this, address, undefined)
 
     // Return copy of our state information
     if (address === undefined) {
-      return JSON.parse(JSON.stringify(this.cache))
+      return JSON.parse(JSON.stringify(this.state_manager))
     }
-    return JSON.parse(JSON.stringify(this.cache[address]))
-  }.bind(this);
+    return JSON.parse(JSON.stringify(this.state_manager[address]))
+    //return JSON.parse(JSON.stringify(_getUpdatedCache.call(this, address)))
+  }.bind(this)
 
   /**
    * Get physical address of this instance
@@ -287,7 +213,7 @@ export default class CECMonitor extends EventEmitter {
    */
   GetPhysicalAddress = function() {
     return this.address.physical
-  }.bind(this);
+  }.bind(this)
 
   /**
    * Get first logical address of this device
@@ -295,7 +221,7 @@ export default class CECMonitor extends EventEmitter {
    */
   GetLogicalAddress = function() {
     return this.address.primary
-  }.bind(this);
+  }.bind(this)
 
   /**
    * Get all logical addresses of this device
@@ -303,7 +229,7 @@ export default class CECMonitor extends EventEmitter {
    */
   GetLogicalAddresses = function() {
     return [].concat(Object.keys(this.address.logical))
-  }.bind(this);
+  }.bind(this)
 
   /**
    * Get the physical address from logical address
@@ -311,13 +237,13 @@ export default class CECMonitor extends EventEmitter {
    * @return {string|null}
    */
   Logical2Physical = function (logical) {
-    logical = parseAddress.call(this, logical, null)
+    logical = _parseAddress.call(this, logical, null)
 
     if (logical === null) {
       return null
     }
-    return this.cache[logical].physical
-  }.bind(this);
+    return this.state_manager[logical].route
+  }.bind(this)
 
   /**
    * Get logical address from physical address
@@ -325,9 +251,9 @@ export default class CECMonitor extends EventEmitter {
    * @return {number|null}
    */
   Physical2Logical = function (physical) {
-    physical = parseAddress.call(this, physical, null)
+    physical = _parseAddress.call(this, physical, null)
     return physical
-  }.bind(this);
+  }.bind(this)
 
   /**
    * Get OSD name for given address
@@ -336,13 +262,13 @@ export default class CECMonitor extends EventEmitter {
    * @return {string}
    */
   GetOSDName = function(address) {
-    address = parseAddress.call(this, address, null)
+    address = _parseAddress.call(this, address, null)
 
     if (address === null) {
       return ''
     }
-    return this.cache[address].osdname
-  }.bind(this);
+    return this.state_manager[address].osdname
+  }.bind(this)
 
   /**
    * Get power status for given address
@@ -351,13 +277,13 @@ export default class CECMonitor extends EventEmitter {
    * @return {number|null}
    */
   GetPowerStatus = function(address) {
-    address = parseAddress.call(this, address, null)
+    address = _parseAddress.call(this, address, null)
 
     if (address === null) {
       return null
     }
-    return this.cache[address].power
-  }.bind(this);
+    return this.state_manager[address].status
+  }.bind(this)
 
   /**
    * Get power status for given address as string
@@ -366,13 +292,13 @@ export default class CECMonitor extends EventEmitter {
    * @return {string|null}
    */
   GetPowerStatusName = function(address) {
-    var power = this.GetPowerStatus(address)
+    address = _parseAddress.call(this, address, null)
 
-    if (power === null) {
-      return power
+    if (address === null) {
+      return null
     }
-    return CEC.PowerStatusNames[power]
-  }.bind(this);
+    return this.state_manager[address].power
+  }.bind(this)
 
   /**
    * Retrieve physical address of currently selected source
@@ -381,7 +307,7 @@ export default class CECMonitor extends EventEmitter {
    */
   GetActiveSource = function() {
     return this.active_source
-  }.bind(this);
+  }.bind(this)
 
   WriteRawMessage = function(raw) {
     return this.isReady
@@ -390,8 +316,7 @@ export default class CECMonitor extends EventEmitter {
         console.log('the cec adapter is not ready')
         console.log(e)
       })
-  }.bind(this);
-
+  }.bind(this)
 
   /**
    * Send a 'tx' message on CEC bus
@@ -423,9 +348,9 @@ export default class CECMonitor extends EventEmitter {
    * @return {Promise} When promise is resolved, the message is sent, otherwise if rejected, the cec adapter is not ready
    */
   SendMessage = function(source, target, opcode, args) {
-    source = parseAddress.call(this, source, this.GetLogicalAddress())
+    source = _parseAddress.call(this, source, this.GetLogicalAddress())
 
-    target = parseAddress.call(this, target, CEC.LogicalAddress.BROADCAST)
+    target = _parseAddress.call(this, target, CEC.LogicalAddress.BROADCAST)
 
     if (typeof opcode === 'string') {
       if (opcode.indexOf('0x') === 0){
@@ -438,8 +363,8 @@ export default class CECMonitor extends EventEmitter {
 
     if (typeof args === 'string') {
       // If a phyiscal address
-      if (isPhysical(args)) {
-        args = physical2args(args)
+      if (_isPhysical(args)) {
+        args = Converter.routeToArgs(args)
       }
       else if (args.indexOf('0x') === 0){
         args = parseInt(args, 16)
@@ -462,360 +387,418 @@ export default class CECMonitor extends EventEmitter {
   Stop = function() {
     if (this.client) {
       this.client.kill('SIGINT')
-      this._onClose()
+      _onClose.call(this)
     }
-  }.bind(this);
-
-  _initCecClient = function(){
-    this.client = spawn('cec-client', this.params)
-    this.client.stdout
-      .pipe(es.split())
-      .pipe(es.map(this._processStdOut))
-    this.client.on('close', this._onClose)
-  }.bind(this);
-
-  _onClose = function() {
-    this.client = null
-    if (this.autorestarting) {
-      setTimeout(this._initCecClient, 15000)
-    }
-    else if (this.no_serial.trigger_stop || !this.recconnect_intent) {
-      return this.emit(CECMonitor.EVENTS._STOP)
-    } else if (this.recconnect_intent) {
-      setTimeout(this._initCecClient, this.no_serial.wait_time * 1000)
-    }
-  }.bind(this);
-
-  _checkReady = function(resolve) {
-    if (this.ready) {
-      return resolve()
-    }
-
-    setTimeout(() => this._checkReady(resolve), 1000)
-  }.bind(this);
-
-  _processStdOut = function(data, cb) {
-    if (/^TRAFFIC:.*/g.test(data)){
-      this._processTraffic(data)
-    } else if (/^DEBUG:.*/g.test(data)) {
-      this._processDebug(data)
-    } else if (/^NOTICE:.*/g.test(data)){
-      this._processNotice(data)
-    } else if (/^waiting for input.*/g.test(data)) {
-      this.autorestarting = false
-      this.recconnect_intent = false
-      this.ready = true
-      this.emit(CECMonitor.EVENTS._READY)
-    } else if (/^WARNING:.*/g.test(data)){
-      this._processWarning(data)
-    } else if (/^ERROR:.*/g.test(data)){
-      this._processError(data)
-    } else if (/(^no serial port given\. trying autodetect: FAILED)|(^Connection lost)/gu.test(data)) {
-      if (this.no_serial.reconnect) {
-        this.recconnect_intent = true
-        this.ready = false
-      }
-      this.emit(CECMonitor.EVENTS._NOSERIALPORT)
-    }
-
-    this.emit(CECMonitor.EVENTS._DATA, data)
-    cb(null, data)
-  }.bind(this);
-
-  _readPacket = function(plain) {
-    const regex = /^(TRAFFIC|DEBUG):\s\[\s*(\d*)\]\s(<<|>>)\s(([\d\w]{2}[:]?)+)$/gu
-    let match = regex.exec(plain)
-    if (match) {
-
-      let tokens = match[4].split(':').map(h => parseInt(h, 16))
-
-      let packet = {
-        type: match[1],
-        number: match[2],
-        flow: match[3] === '>>' ? 'IN' : 'OUT',
-        source: (tokens[0] & 0xF0) >> 4,
-        target: tokens[0] & 0x0F,
-        opcode: tokens[1],
-        args: tokens.slice(2)
-      }
-
-      this.emit(CECMonitor.EVENTS._PACKET, packet)
-      return packet
-    }
-
-    return null
-  }.bind(this);
-
-  _processTraffic = function(data){
-
-    this.emit(CECMonitor.EVENTS._TRAFFIC, data)
-
-    let packet = this._readPacket(data)
-
-    if (packet) {
-      if (packet.flow === 'IN') {
-        this.emit(CECMonitor.EVENTS._RECEIVED, packet)
-      } else {
-        this.emit(CECMonitor.EVENTS._SENDED, packet)
-      }
-      if (!packet.opcode){
-        this.emit(CECMonitor.EVENTS.POLLING_MESSAGE, packet)
-      } else {
-        this._processEvents(packet)
-      }
-    }
-  }.bind(this);
-
-  _processEvents = function(packet) {
-
-    let data = {}
-    let physical, source, version, status, id, vendor, from, to, osdname
-
-    // Store opcode name as event property
-    packet.event = CEC.OpcodeNames[packet.opcode]
-
-    switch (packet.opcode) {
-    case CEC.Opcode.ACTIVE_SOURCE:
-      if (packet.args.length !== 2) {
-        return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command ACTIVE_SOURCE with bad formated address')
-      }
-      source = packet.args[0] << 8 | packet.args[1]
-      physical = args2physical(packet.args)
-      // Update our records
-      this.active_source = physical
-      data = {
-        val: source,
-        str: physical
-      }
-      break
-
-    case CEC.Opcode.CEC_VERSION:
-      if (packet.args.length !==1) {
-        return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command CEC_VERSION without version')
-      }
-      version = packet.args[0]
-      data = {
-        val: version,
-        str: CEC.CECVersionNames[version]
-      }
-      break
-
-    // todo: untested
-    case CEC.Opcode.DECK_STATUS:
-      if (packet.args.length !== 2) {
-        return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command DECK_STATUS without Deck Info')
-      }
-      status = packet.args[0] << 8 | packet.args[1]
-      data = {
-        val: status,
-        str: CEC.DeckStatusNames[status]
-      }
-      break
-
-    case CEC.Opcode.DEVICE_VENDOR_ID:
-      if (packet.args.length !== 3) {
-        return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command DEVICE_VENDOR_ID with bad arguments')
-      }
-      id = packet.args[0] << 16 | packet.args[1] << 8 | packet.args[2]
-      vendor = CEC.VendorIdNames[id]
-      data = {
-        val: id,
-        str: vendor
-      }
-      break
-
-    case CEC.Opcode.REPORT_PHYSICAL_ADDRESS:
-      if (packet.args.length !== 3) {
-        return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command REPORT_PHYSICAL_ADDRESS with bad formated address or device type')
-      }
-      source = packet.args[0] << 8 | packet.args[1]
-      physical = args2physical(packet.args)
-      // Update our records
-      this.cache[packet.source].physical = physical
-      this.p2l[physical] = packet.source
-      data = {
-        val: source,
-        str: physical
-      }
-      break
-
-    case CEC.Opcode.REPORT_POWER_STATUS:
-      if (packet.args.length !== 1) {
-        return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command REPORT_POWER_STATUS with bad formated power status')
-      }
-      status = packet.args[0]
-      // Update our records
-      this.cache[packet.source].power = status
-      data = {
-        val: status,
-        str: CEC.PowerStatusNames[status]
-      }
-      break
-
-    case CEC.Opcode.ROUTING_CHANGE:
-      if (packet.args.length !== 4) {
-        return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command ROUTING_CHANGE with bad formated addresses')
-      }
-      from = packet.args[0] << 8 | packet.args[1]
-      to = packet.args[2] << 8 | packet.args[3]
-      // Update our records
-      this.active_source = args2physical(packet.args.slice(2, 4))
-      data = {
-        from: {
-          val: from,
-          str: args2physical(packet.args.slice(0, 2))
-        },
-        to: {
-          val: to,
-          str: args2physical(packet.args.slice(2, 4))
-        }
-      }
-      break
-
-    case CEC.Opcode.SET_OSD_NAME:
-      if (!packet.args.length) {
-        return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command SET_OSD_NAME without OSD NAME')
-      }
-      osdname = String.fromCharCode.apply(null, packet.args)
-      // Update our records
-      this.cache[packet.source].osdname = osdname
-      data = {
-        val: osdname,
-        str: osdname
-      }
-      break
-
-    case CEC.Opcode.STANDBY:
-      if (packet.args.length !== 0) {
-        return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command STANDBY with bad args')
-      }
-      // If we have received a standby, query devices for power status
-      if (packet.target === 15) { // Query all
-        setTimeout(() => {
-          Object.keys(this.cache).forEach(target => {
-            this.SendMessage(null, target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)
-          })
-        }, 5000)
-      }
-      else { // Otherwise just target
-        setTimeout(() => {this.SendMessage(null, packet.target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)}, 3000)
-      }
-      break
-
-    case CEC.Opcode.IMAGE_VIEW_ON:
-    case CEC.Opcode.TEXT_VIEW_ON:
-      if (packet.args.length !== 0) {
-        return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command IMAGE_VIEW_ON with bad args')
-      }
-      // If we have received an image_view_on, query device for power status
-      setTimeout(() => {this.SendMessage(null, packet.target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)}, 3000)
-      break
-    }
-
-    packet.data = data
-    if (packet.event !== null) {
-      // Emit all OPCODE events to '_opcode' event
-      this.emit(CECMonitor.EVENTS._OPCODE, packet)
-
-      return this.emit(packet.event, packet)
-    }
-  };
-
-  _processNotice = function(data) {
-    const regexLogical = /logical\saddress\(es\)\s=\s(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu
-    let match = regexLogical.exec(data)
-    if (match) {
-      this.address.primary = parseInt(match[2], 10)
-      this.cache[this.address.primary].osdname = this.OSDName
-      this.address.logical = {}
-      while (match){
-        this.address.logical[match[2]] = true
-        this.cache[match[2]].osdname = this.OSDName
-        match = regexLogical.exec(data)
-      }
-    }
-
-    const regexDevice = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),/gu
-    match = regexDevice.exec(data)
-    if (match) {
-      this.address.base = parseInt(match[1], 10)
-      this.address.hdmi = parseInt(match[2], 10)
-    }
-
-    const regexPhysical = /physical\saddress:\s([\w.]+)/gu
-    match = regexPhysical.exec(data)
-    if (match) {
-      this.address.physical = match[1]
-      Object.keys(this.address.logical).forEach( s => {
-        this.cache[s].physical = this.address.physical
-        this.p2l[this.address.physical] = s
-      })
-    }
-
-    return this.emit(CECMonitor.EVENTS._NOTICE, data)
-  }.bind(this);
-
-  _processDebug = function(data){
-    if (/TRANSMIT_FAILED_ACK/gu.test(data)){
-      return this.emit(CECMonitor.EVENTS._NOHDMICORD)
-    }
-    if (this.debug) {
-      return this.emit(CECMonitor.EVENTS._DEBUG, data)
-    }
-  }.bind(this);
-
-  _processWarning = function(data){
-    if (/COMMAND_REJECTED/gu.test(data)){
-      this.ready = false
-      this.autorestarting = true
-      this.Stop()
-    }
-    return this.emit(CECMonitor.EVENTS._WARNING, data)
-  }.bind(this);
-
-  _processError = function(data){
-    return this.emit(CECMonitor.EVENTS._ERROR, data)
   }.bind(this);
 }
 
-/**
- * Convert array of values from CEC into string formatted physical address
- * @param {number[]} value An array of byte values
- * @return {string} Physical address in . notation ie 0.0.0.0
- */
-function args2physical(value) {
-  let v = value[0] << 8 | value[1]
-
-  return ['0', '0', '0', '0'].concat(v.toString(16).toLocaleUpperCase().split('')).slice(-4).join('.')
-}
-
-/**
- * Convert string formatted phyiscal address of form 0.0.0.0 to two-byte array
+/*** BEGIN INTERNAL FUNCTIONS
  *
- * @param {string} address Physical address to convert
- * @return {number[]} A two-byte encoded verstion represented as an array
- */
-function physical2args(address) {
-  let s = address.split('.').join('')
-  let v = parseInt(s, 16)
-  let arr = []
+ * THEY SHOULD NOT BE USED BY END USERS AND SHOULD NOT BE EXPORTED
+ *
+ * ***/
 
-  arr.unshift(v & 0xFF)
-  v >>= 8
-  arr.unshift(v & 0xFF)
-  return arr
+const _getUpdatedCache = async function(address) {
+  return await _sendCommand.call(this, address, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CEC.Opcode.REPORT_POWER_STATUS)
+    .then(() => this.state_manager[address])
+}
+
+const _sendCommand = function(target, message, event) {
+  const response = _eventPromise.call(this, event)
+
+  return this.SendMessage(null, target, message)
+    .then(() => new Promise.race([
+      response,
+      _timeoutReject.call(this, target, 5000)
+    ]))
+}
+
+const _eventPromise = function(target, event) {
+  return new Promise((resolve) => {
+    this.once(event, packet => {
+      if (packet.target === target){
+        return resolve(packet)
+      }
+      return _eventPromise.call(this, target, event)
+    })
+  })
+}
+
+const _timeoutReject = function(target, milisecondsToWait) {
+  return new Promise((resolve, reject) =>
+    setTimeout(() => reject(new CECTimeoutError(target, milisecondsToWait)), milisecondsToWait).unref()
+  )
 }
 
 /**
- * Determine if provided string matches a CEC physical address
- * @param {string} address Address to test
- * @return {boolean} True if it matches form 0.0.0.0 otherwise false
+ * Start the cec-client process in monitor mode.
+ * @returns {spawn} cec-client process
+ * @private
  */
-function isPhysical(address) {
-  if (typeof address !== 'string')
-    return false
+const _initCecClient = function() {
+  this.client = spawn('cec-client', this.params)
+  this.client.stdout
+    .pipe(es.split())
+    .pipe(es.map(_processStdOut.bind(this)))
+  this.client.on('close', _onClose.bind(this))
+  return this.client
+}
 
-  return (address.toString().match(/^(?:\d+\.){3}\d+$/) !== null)
+/**
+ * On Close time. Prepare restart cec-client and/or launch _STOP event
+ * @type {function(this:CECMonitor)}
+ * @private
+ */
+const _onClose = function() {
+  this.client = null
+  if (this.auto_restarting) {
+    setTimeout(_initCecClient.bind(this), 15000)
+  }
+  else if (this.no_serial.trigger_stop || !this.reconnect_intent) {
+    return this.emit(CECMonitor.EVENTS._STOP)
+  } else if (this.reconnect_intent) {
+    setTimeout(_initCecClient.bind(this), this.no_serial.wait_time * 1000)
+  }
+}
+
+/**
+ * Promise what resolve only when the adapter is ready to receive messages
+ * @param {function} resolve
+ * @returns {Number|Promise} Resolved promise or timer id
+ * @private
+ */
+const _checkReady = function(resolve) {
+  if (this.ready) {
+    return resolve()
+  }
+
+  return setTimeout(function () {return _checkReady.call(this, resolve)}.bind(this), 1000).unref()
+}
+
+/**
+ * Process the standard out of cec-client
+ * @type {function(this:CECMonitor)}
+ * @private
+ */
+const _processStdOut = function(data, cb) {
+  if (/^TRAFFIC:.*/g.test(data)){
+    _processTraffic.call(this, data)
+  } else if (/^DEBUG:.*/g.test(data)) {
+    _processDebug.call(this, data)
+  } else if (/^NOTICE:.*/g.test(data)){
+    _processNotice.call(this, data)
+  } else if (/^waiting for input.*/g.test(data)) {
+    this.auto_restarting = false
+    this.reconnect_intent = false
+    this.ready = true
+    this.emit(CECMonitor.EVENTS._READY)
+  } else if (/^WARNING:.*/g.test(data)){
+    _processWarning.call(this, data)
+  } else if (/^ERROR:.*/g.test(data)){
+    _processError.call(this, data)
+  } else if (/(^no serial port given\. trying autodetect: FAILED)|(^Connection lost)/gu.test(data)) {
+    if (this.no_serial.reconnect) {
+      this.reconnect_intent = true
+      this.ready = false
+    }
+    this.emit(CECMonitor.EVENTS._NOSERIALPORT)
+  }
+
+  this.emit(CECMonitor.EVENTS._DATA, data)
+  cb(null, data)
+}
+
+/**
+ * Parse the packet info from stdout
+ * @type {function(this:CECMonitor)}
+ * @param {String} plain stdout text
+ * @private
+ */
+const _readPacket = function(plain) {
+  const regex = /^(TRAFFIC|DEBUG):\s\[\s*(\d*)\]\s(<<|>>)\s(([\d\w]{2}[:]?)+)$/gu
+  let match = regex.exec(plain)
+  if (match) {
+
+    let tokens = match[4].split(':').map(h => parseInt(h, 16))
+
+    let packet = {
+      type: match[1],
+      number: match[2],
+      flow: match[3] === '>>' ? 'IN' : 'OUT',
+      source: (tokens[0] & 0xF0) >> 4,
+      target: tokens[0] & 0x0F,
+      opcode: tokens[1],
+      args: tokens.slice(2)
+    }
+
+    this.emit(CECMonitor.EVENTS._PACKET, packet)
+    return packet
+  }
+
+  return null
+}
+
+/**
+ *
+ * @type {function(this:CECMonitor)}
+ * @param {String} plain stdout text
+ * @private
+ */
+const _processTraffic = function(plain){
+
+  this.emit(CECMonitor.EVENTS._TRAFFIC, plain)
+
+  let packet = _readPacket.call(this, plain)
+
+  if (packet) {
+    if (packet.flow === 'IN') {
+      this.emit(CECMonitor.EVENTS._RECEIVED, packet)
+    } else {
+      this.emit(CECMonitor.EVENTS._SENDED, packet)
+    }
+    if (!packet.opcode){
+      this.emit(CECMonitor.EVENTS.POLLING_MESSAGE, packet)
+    } else {
+      _processEvents.call(this, packet)
+    }
+  }
+}
+
+/**
+ * Process all received events
+ * @type {function(this:CECMonitor)}
+ * @param {Object} packet
+ * @private
+ */
+const _processEvents = function(packet) {
+
+  let data = {}
+  let physical, source, version, status, from, to
+
+  // Store opcode name as event property
+  packet.event = CEC.OpcodeNames[packet.opcode]
+
+  switch (packet.opcode) {
+  case CEC.Opcode.ACTIVE_SOURCE:
+    if (packet.args.length !== 2) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command ACTIVE_SOURCE with bad formated address')
+    }
+
+    source = Converter.argsToPhysical(packet.args)
+    physical = Converter.physicalToRoute(source)
+    // Update our records
+    this.active_source = physical
+    data = {
+      val: source,
+      str: physical
+    }
+    break
+
+  case CEC.Opcode.CEC_VERSION:
+    if (packet.args.length !==1) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command CEC_VERSION without version')
+    }
+    version = packet.args[0]
+    data = {
+      val: version,
+      str: CEC.CECVersionNames[version]
+    }
+    break
+
+  case CEC.Opcode.DECK_STATUS:
+    if (packet.args.length !== 2) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command DECK_STATUS without Deck Info')
+    }
+    status = packet.args[0] << 8 | packet.args[1]
+    data = {
+      val: status,
+      str: CEC.DeckStatusNames[status]
+    }
+    break
+
+  case CEC.Opcode.DEVICE_VENDOR_ID:
+    if (packet.args.length !== 3) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command DEVICE_VENDOR_ID with bad arguments')
+    }
+    this.state_manager[packet.source].vendorid = Converter.argsToVendorID(packet.args)
+    data = {
+      val: this.state_manager[packet.source].vendorid,
+      str: this.state_manager[packet.source].vendor
+    }
+    break
+
+  case CEC.Opcode.REPORT_PHYSICAL_ADDRESS:
+    if (packet.args.length !== 3) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command REPORT_PHYSICAL_ADDRESS with bad formated address or device type')
+    }
+    // Update our records
+    this.state_manager[packet.source].physical = Converter.argsToPhysical(packet.args)
+    data = {
+      val: this.state_manager[packet.source].physical,
+      str: this.state_manager[packet.source].route
+    }
+    break
+
+  case CEC.Opcode.REPORT_POWER_STATUS:
+    if (packet.args.length !== 1) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command REPORT_POWER_STATUS with bad formated power status')
+    }
+    // Update our records
+    this.state_manager[packet.source].status = packet.args[0]
+    data = {
+      val: this.state_manager[packet.source].status,
+      str: this.state_manager[packet.source].power
+    }
+    break
+
+  case CEC.Opcode.ROUTING_CHANGE:
+    if (packet.args.length !== 4) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command ROUTING_CHANGE with bad formated addresses')
+    }
+    from = Converter.argsToPhysical(packet.args.slice(0, 2))
+    to = Converter.argsToPhysical(packet.args.slice(2, 4))
+    physical = Converter.physicalToRoute(to)
+    // Update our records
+    this.active_source = physical
+    data = {
+      from: {
+        val: from,
+        str: Converter.physicalToRoute(from)
+      },
+      to: {
+        val: to,
+        str: physical
+      }
+    }
+    break
+
+  case CEC.Opcode.SET_OSD_NAME:
+    if (!packet.args.length) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command SET_OSD_NAME without OSD NAME')
+    }
+    // Update our records
+    this.state_manager[packet.source].osdname = Converter.argsToOSDName(packet.args)
+    data = {
+      val: this.state_manager[packet.source].osdname,
+      str: this.state_manager[packet.source].osdname
+    }
+    break
+
+  case CEC.Opcode.STANDBY:
+    if (packet.args.length !== 0) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command STANDBY with bad args')
+    }
+    //TODO: delete not protocolar calls
+    // If we have received a standby, query devices for power status
+    if (packet.target === 15) { // Query all
+      setTimeout(() => {
+        Object.keys(this.state_manager).forEach(target => {
+          this.SendMessage(null, target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)
+        })
+      }, 5000).unref()
+    }
+    else { // Otherwise just target
+      setTimeout(() => {this.SendMessage(null, packet.target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)}, 3000).unref()
+    }
+    break
+
+  case CEC.Opcode.IMAGE_VIEW_ON:
+  case CEC.Opcode.TEXT_VIEW_ON:
+    if (packet.args.length !== 0) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command IMAGE_VIEW_ON with bad args')
+    }
+    //TODO: delete not protocolar calls
+    // If we have received an image_view_on, query device for power status
+    setTimeout(() => {this.SendMessage(null, packet.target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)}, 3000).unref()
+    break
+  }
+
+  packet.data = data
+  if (packet.event !== null) {
+    // Emit all OPCODE events to '_opcode' event
+    this.emit(CECMonitor.EVENTS._OPCODE, packet)
+
+    return this.emit(packet.event, packet)
+  }
+}
+
+/**
+ * Process notice text from cec-client
+ * @type {function(this:CECMonitor)}
+ * @param {String} data:  notice stdout text
+ * @private
+ */
+const _processNotice = function(data) {
+  const regexLogical = /logical\saddress\(es\)\s=\s(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu
+  let match = regexLogical.exec(data)
+  if (match) {
+    this.address.primary = parseInt(match[2], 10)
+    this.state_manager[this.address.primary].osdname = this.OSDName
+    this.address.logical = {}
+    while (match){
+      this.address.logical[match[2]] = true
+      this.state_manager[match[2]].osdname = this.OSDName
+      match = regexLogical.exec(data)
+    }
+  }
+
+  const regexDevice = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),/gu
+  match = regexDevice.exec(data)
+  if (match) {
+    this.address.base = parseInt(match[1], 10)
+    this.address.hdmi = parseInt(match[2], 10)
+  }
+
+  const regexPhysical = /physical\saddress:\s([\w.]+)/gu
+  match = regexPhysical.exec(data)
+  if (match) {
+    this.address.physical = match[1]
+    Object.keys(this.address.logical).forEach( s => {
+      this.state_manager[s].route = this.address.physical
+    })
+  }
+
+  return this.emit(CECMonitor.EVENTS._NOTICE, data)
+}
+
+/**
+ * Process debug text from cec-client
+ * @type {function(this:CECMonitor)}
+ * @param {String} data:  debug stdout text
+ * @private
+ */
+const _processDebug = function(data){
+  if (/TRANSMIT_FAILED_ACK/gu.test(data)){
+    return this.emit(CECMonitor.EVENTS._NOHDMICORD)
+  }
+  if (this.debug) {
+    return this.emit(CECMonitor.EVENTS._DEBUG, data)
+  }
+}
+
+/**
+ * Process warning text from cec-client
+ * @type {function(this:CECMonitor)}
+ * @param {String} data:  warning stdout text
+ * @private
+ */
+const _processWarning = function(data){
+  if (/COMMAND_REJECTED/gu.test(data)){
+    this.ready = false
+    this.auto_restarting = true
+    this.Stop()
+  }
+  return this.emit(CECMonitor.EVENTS._WARNING, data)
+}
+
+/**
+ * Process error text from cec-client
+ * @type {function(this:CECMonitor)}
+ * @param {String} data:  error stdout text
+ * @private
+ */
+const _processError = function(data){
+  return this.emit(CECMonitor.EVENTS._ERROR, data)
 }
 
 /**
@@ -823,13 +806,14 @@ function isPhysical(address) {
  * @param {number|string} address Address to parse/convert to logical address
  * @param {number} def Default logical address if address invalid
  */
-function parseAddress(address, def) {
+const _parseAddress = function(address, def) {
   if (typeof address === 'string') {
     if (address.indexOf('0x') === 0){
       address = parseInt(address, 16)
+
     }
-    else if (isPhysical(address)) {
-      address = (this.p2l.hasOwnProperty(address)) ? this.p2l[address] : def
+    else if (_isPhysical(address)) {
+      address = this.state_manager.GetByRoute(address) || def
     }
     else if (CEC.LogicalAddress.hasOwnProperty(address.toLocaleUpperCase())) {
       address = CEC.LogicalAddress[address.toLocaleUpperCase()]
@@ -844,3 +828,17 @@ function parseAddress(address, def) {
   }
   return address
 }
+
+/**
+ * Determine if provided string matches a CEC physical address
+ * @param {string} address Address to test
+ * @return {boolean} True if it matches form 0.0.0.0 otherwise false
+ */
+const _isPhysical = function (address) {
+  if (typeof address !== 'string')
+    return false
+
+  return (address.toString().match(/^(?:\d+\.){3}\d+$/) !== null)
+}
+
+/*** END INTERNAL FUNCTIONS***/
