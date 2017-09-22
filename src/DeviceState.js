@@ -10,12 +10,12 @@ const privates = new WeakMap()
 
 export default class DeviceState {
 
-  constructor() {
+  constructor(osd) {
     let _physical = 0
     let _route = ''
     let _status = CEC.PowerStatus.UNKNOWN
     let _power = CEC.PowerStatusNames[_status]
-    let _osdname = ''
+    let _osdname = osd
     let _primary = false
     let _owned = false
     let _vendorid = CEC.VendorId.UNKNOWN

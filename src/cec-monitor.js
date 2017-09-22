@@ -397,7 +397,7 @@ export default class CECMonitor extends EventEmitter {
  * THEY SHOULD NOT BE USED BY END USERS AND SHOULD NOT BE EXPORTED
  *
  * ***/
-
+// eslint-disable-next-line no-unused-vars
 const _getUpdatedCache = async function(address) {
   return await _sendCommand.call(this, address, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CEC.Opcode.REPORT_POWER_STATUS)
     .then(() => this.state_manager[address])
