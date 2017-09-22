@@ -573,7 +573,7 @@ const _processTraffic = function(plain){
 const _processEvents = function(packet) {
 
   let data = {}
-  let physical, source, version, status, from, to
+  let physical, source, status, from, to
 
   // Store opcode name as event property
   packet.event = CEC.OpcodeNames[packet.opcode]
@@ -598,10 +598,10 @@ const _processEvents = function(packet) {
     if (packet.args.length !==1) {
       return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command CEC_VERSION without version')
     }
-    version = packet.args[0]
+    this.state_manager[packet.source].cec = packet.args[0]
     data = {
-      val: version,
-      str: CEC.CECVersionNames[version]
+      val: this.state_manager[packet.source].cec,
+      str: this.state_manager[packet.source].cecversion
     }
     break
 

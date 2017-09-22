@@ -21,21 +21,40 @@ export default class DeviceState {
     let _vendorid = CEC.VendorId.UNKNOWN
     let _vendor = CEC.VendorIdNames[_vendorid]
     let _timestamp = Date.now()
+    let _cec = -1
+    let _cecversion = CEC.CECVersionNames[_cec]
 
     privates.set(this, {
+      _cec,
+      _cecversion,
+      _osdname,
+      _owned,
       _physical,
+      _power,
+      _primary,
       _route,
       _status,
-      _power,
-      _osdname,
-      _primary,
-      _owned,
       _vendorid,
       _vendor,
       _timestamp
     })
 
     Object.defineProperties(this, {
+      'cec': {
+        enumerable: true,
+        get: () => privates.get(this)._cec,
+        set: (cec) => {
+          const _ = privates.get(this)
+          _._cec = cec
+          _._cecversion = CEC.CECVersionNames[cec]
+          _._timestamp = Date.now()
+          return cec
+        }
+      },
+      'cecversion': {
+        enumerable: true,
+        get: () => privates.get(this)._cecversion,
+      },
       'osdname': {
         enumerable: true,
         get: () => privates.get(this)._osdname,

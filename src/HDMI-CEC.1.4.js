@@ -481,6 +481,7 @@ let data = {
   },
 
   CECVersion: {
+    UNKNOWN: -1,
     VERSION_1_1: 0x00,
     VERSION_1_2: 0x01,
     VERSION_1_2A: 0x02,
