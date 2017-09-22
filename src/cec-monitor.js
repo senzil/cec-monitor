@@ -688,18 +688,7 @@ const _processEvents = function(packet) {
     if (packet.args.length !== 0) {
       return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command STANDBY with bad args')
     }
-    //TODO: delete not protocolar calls
-    // If we have received a standby, query devices for power status
-    if (packet.target === 15) { // Query all
-      setTimeout(() => {
-        Object.keys(this.state_manager).forEach(target => {
-          this.SendMessage(null, target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)
-        })
-      }, 5000).unref()
-    }
-    else { // Otherwise just target
-      setTimeout(() => {this.SendMessage(null, packet.target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)}, 3000).unref()
-    }
+
     break
 
   case CEC.Opcode.IMAGE_VIEW_ON:
@@ -707,9 +696,6 @@ const _processEvents = function(packet) {
     if (packet.args.length !== 0) {
       return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command IMAGE_VIEW_ON with bad args')
     }
-    //TODO: delete not protocolar calls
-    // If we have received an image_view_on, query device for power status
-    setTimeout(() => {this.SendMessage(null, packet.target, CEC.Opcode.GIVE_DEVICE_POWER_STATUS)}, 3000).unref()
     break
   }
 
