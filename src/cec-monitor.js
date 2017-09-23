@@ -14,7 +14,8 @@ import CEC from './HDMI-CEC.1.4'
 import ON_DEATH from 'death'
 import CECTimeoutError from './TimeoutError'
 import StateManager from './StateManager'
-import Converter from './Converter'
+import Convert from './Convert'
+import Validate from './Validate'
 
 export default class CECMonitor extends EventEmitter {
 
@@ -363,8 +364,8 @@ export default class CECMonitor extends EventEmitter {
 
     if (typeof args === 'string') {
       // If a phyiscal address
-      if (_isPhysical(args)) {
-        args = Converter.routeToArgs(args)
+      if (Validate.isRoute(args)) {
+        args = Convert.routeToArgs(args)
       }
       else if (args.indexOf('0x') === 0){
         args = parseInt(args, 16)
@@ -584,8 +585,8 @@ const _processEvents = function(packet) {
       return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command ACTIVE_SOURCE with bad formated address')
     }
 
-    source = Converter.argsToPhysical(packet.args)
-    physical = Converter.physicalToRoute(source)
+    source = Convert.argsToPhysical(packet.args)
+    physical = Convert.physicalToRoute(source)
     // Update our records
     this.active_source = physical
     data = {
@@ -620,7 +621,7 @@ const _processEvents = function(packet) {
     if (packet.args.length !== 3) {
       return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command DEVICE_VENDOR_ID with bad arguments')
     }
-    this.state_manager[packet.source].vendorid = Converter.argsToVendorID(packet.args)
+    this.state_manager[packet.source].vendorid = Convert.argsToVendorID(packet.args)
     data = {
       val: this.state_manager[packet.source].vendorid,
       str: this.state_manager[packet.source].vendor
@@ -632,7 +633,7 @@ const _processEvents = function(packet) {
       return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command REPORT_PHYSICAL_ADDRESS with bad formated address or device type')
     }
     // Update our records
-    this.state_manager[packet.source].physical = Converter.argsToPhysical(packet.args)
+    this.state_manager[packet.source].physical = Convert.argsToPhysical(packet.args)
     data = {
       val: this.state_manager[packet.source].physical,
       str: this.state_manager[packet.source].route
@@ -655,15 +656,15 @@ const _processEvents = function(packet) {
     if (packet.args.length !== 4) {
       return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command ROUTING_CHANGE with bad formated addresses')
     }
-    from = Converter.argsToPhysical(packet.args.slice(0, 2))
-    to = Converter.argsToPhysical(packet.args.slice(2, 4))
-    physical = Converter.physicalToRoute(to)
+    from = Convert.argsToPhysical(packet.args.slice(0, 2))
+    to = Convert.argsToPhysical(packet.args.slice(2, 4))
+    physical = Convert.physicalToRoute(to)
     // Update our records
     this.active_source = physical
     data = {
       from: {
         val: from,
-        str: Converter.physicalToRoute(from)
+        str: Convert.physicalToRoute(from)
       },
       to: {
         val: to,
@@ -677,7 +678,7 @@ const _processEvents = function(packet) {
       return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command SET_OSD_NAME without OSD NAME')
     }
     // Update our records
-    this.state_manager[packet.source].osdname = Converter.argsToOSDName(packet.args)
+    this.state_manager[packet.source].osdname = Convert.argsToOSDName(packet.args)
     data = {
       val: this.state_manager[packet.source].osdname,
       str: this.state_manager[packet.source].osdname
@@ -798,8 +799,9 @@ const _parseAddress = function(address, def) {
       address = parseInt(address, 16)
 
     }
-    else if (_isPhysical(address)) {
-      address = this.state_manager.GetByRoute(address) || def
+    else if (Validate.isRoute(address)) {
+      const state = this.state_manager.GetByRoute(address);
+      address = state ? state.logical : def
     }
     else if (CEC.LogicalAddress.hasOwnProperty(address.toLocaleUpperCase())) {
       address = CEC.LogicalAddress[address.toLocaleUpperCase()]
@@ -813,18 +815,6 @@ const _parseAddress = function(address, def) {
     address = def
   }
   return address
-}
-
-/**
- * Determine if provided string matches a CEC physical address
- * @param {string} address Address to test
- * @return {boolean} True if it matches form 0.0.0.0 otherwise false
- */
-const _isPhysical = function (address) {
-  if (typeof address !== 'string')
-    return false
-
-  return (address.toString().match(/^(?:\d+\.){3}\d+$/) !== null)
 }
 
 /*** END INTERNAL FUNCTIONS***/

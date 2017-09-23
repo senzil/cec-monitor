@@ -4,7 +4,6 @@
 'use strict'
 
 import DeviceState from './DeviceState'
-import CEC from './HDMI-CEC.1.4'
 
 export default class StateManager extends Array {
   static get [Symbol.species]() { return Array }
@@ -12,10 +11,10 @@ export default class StateManager extends Array {
   constructor (){
     super()
     for (let state, i = 0; i < 16; i++) {
-      state = new DeviceState(CEC.LogicalAddressNames[i])
+      state = new DeviceState(i)
       //set TV physical address
       if (i===0) {
-        state.physical = 0
+        state.physical = 0x0000
       }
       this.push(state)
     }

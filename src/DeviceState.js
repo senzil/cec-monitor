@@ -4,18 +4,19 @@
 'use strict'
 
 import CEC from './HDMI-CEC.1.4'
-import Converter from './Converter'
+import Converter from './Convert'
 
 const privates = new WeakMap()
 
 export default class DeviceState {
 
-  constructor(osd) {
-    let _physical = 0
+  constructor(logical, osd) {
+    let _logical = logical
+    let _physical = -1
     let _route = ''
     let _status = CEC.PowerStatus.UNKNOWN
     let _power = CEC.PowerStatusNames[_status]
-    let _osdname = osd
+    let _osdname = CEC.LogicalAddressNames[_logical]
     let _primary = false
     let _owned = false
     let _vendorid = CEC.VendorId.UNKNOWN
@@ -25,6 +26,7 @@ export default class DeviceState {
     let _cecversion = CEC.CECVersionNames[_cec]
 
     privates.set(this, {
+      _logical,
       _cec,
       _cecversion,
       _osdname,
@@ -40,6 +42,10 @@ export default class DeviceState {
     })
 
     Object.defineProperties(this, {
+      'logical': {
+        enumerable: true,
+        get: () => privates.get(this)._logical,
+      },
       'cec': {
         enumerable: true,
         get: () => privates.get(this)._cec,

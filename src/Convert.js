@@ -3,7 +3,7 @@
  */
 'use strict'
 
-export default class Converter {
+export default class Convert {
 
   /**
    * Convert array of values from CEC into Number formatted physical address
