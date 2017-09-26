@@ -319,6 +319,11 @@ export default class CECMonitor extends EventEmitter {
       })
   }.bind(this)
 
+  WriteMessage = function(source, target, opcode, args) {
+    let msg = `tx ${[((source << 4) + target), opcode].concat(args || []).map(h => `0${h.toString(16)}`.substr(-2)).join(':')}`
+    return this.WriteRawMessage(msg)
+  }.bind(this);
+
   /**
    * Send a 'tx' message on CEC bus
    *
@@ -354,8 +359,8 @@ export default class CECMonitor extends EventEmitter {
     target = _parseAddress.call(this, target, CEC.LogicalAddress.BROADCAST)
 
     if (typeof opcode === 'string') {
-      if (opcode.indexOf('0x') === 0){
-        opcode = parseInt(opcode, 16)
+      if (Validate.isHexaNumber(opcode)){
+        opcode = Number.parseInt(opcode, 16)
       }
       else if (CEC.Opcode.hasOwnProperty(opcode.toLocaleUpperCase())) {
         opcode = CEC.Opcode[opcode.toLocaleUpperCase()]
@@ -367,8 +372,8 @@ export default class CECMonitor extends EventEmitter {
       if (Validate.isRoute(args)) {
         args = Convert.routeToArgs(args)
       }
-      else if (args.indexOf('0x') === 0){
-        args = parseInt(args, 16)
+      else if (Validate.isHexaNumber(args)){
+        args = Number.parseInt(args, 16)
       }
       // Otherwise treat as string argument
       else {
@@ -379,11 +384,6 @@ export default class CECMonitor extends EventEmitter {
     // else if(typeof args === 'object' && args instanceof Command)
     return this.WriteMessage(source, target, opcode, args)
   };
-
-  WriteMessage = function(source, target, opcode, args) {
-    let msg = `tx ${[((source << 4) + target), opcode].concat(args || []).map(h => `0${h.toString(16)}`.substr(-2)).join(':')}`
-    return this.WriteRawMessage(msg)
-  }.bind(this);
 
   Stop = function() {
     if (this.client) {
