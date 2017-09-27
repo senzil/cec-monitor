@@ -29,7 +29,7 @@ export default class Convert {
    * @return {string} Physical address in . notation ie 0.0.0.0
    */
   static argsToRoute(args) {
-    return Converter.physicalToRoute(Converter.argsToPhysical(args))
+    return Convert.physicalToRoute(Convert.argsToPhysical(args))
   }
 
   /**
@@ -75,6 +75,6 @@ export default class Convert {
    * @return {number[]} A two-byte encoded verstion represented as an array
    */
   static routeToArgs(address) {
-    return Converter.physicalToArgs(Converter.routeToPhysical(address))
+    return Convert.physicalToArgs(Convert.routeToPhysical(address))
   }
 }

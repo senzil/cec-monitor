@@ -30,7 +30,7 @@ export default class CECMonitor extends EventEmitter {
   reconnect_intent;
   params;
   state_manager;
-  status_cache_timeout;
+  state_cache_timeout;
   auto_update_status_interval;
   active_source;
 
@@ -54,6 +54,7 @@ export default class CECMonitor extends EventEmitter {
     this.no_serial = Object.assign(this.no_serial, options.no_serial)
     this.reconnect_intent = false
     this.debug = options.debug
+    this.state_cache_timeout = options.state_cache_timeout
 
     // Cache of data about logical addresses
     this.state_manager = new StateManager()
@@ -383,7 +384,35 @@ export default class CECMonitor extends EventEmitter {
     // todo: Create classes for complex operations (EG. SELECT_DIGITAL_SERVICE), that can be provided and generate their own arguments array
     // else if(typeof args === 'object' && args instanceof Command)
     return this.WriteMessage(source, target, opcode, args)
-  };
+  }.bind(this)
+
+  /**
+   * Send a 'tx' message on CEC bus and wait for a event like response or timeout
+   *
+   * @param {String|Number|null} source Logical address for source of message (defaults to own address if null)
+   * @param {String|Number} target Logical address for target of message (defaults to broadcast if null)
+   * @param {String|Number} opcode Opcode for message expressed as a byte value or STRING label
+   * @param {String} event to wait for a response
+   * @param {String|Number|Array[]} [args] Optional arguments for opcode, type depending on opcode
+   * @example
+   * monitor.SendCommand(CEC.LogicalAddress.RECORDER1, CEC.LogicalAddress.TV, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CECMonitor.EVENTS.REPORT_POWER_STATUS);
+   * source, logical, opcode and args work like SendMessage function
+   * @see SendMessage
+   * @return {Promise} When promise is resolved, the message is sent and get the packet from the event as response, otherwise if rejected, the cec adapter is not ready or the event timeouted
+   */
+  SendCommand = function(source, target, opcode, event, args){
+    source = _parseAddress.call(this, source, this.GetLogicalAddress())
+    target = _parseAddress.call(this, target, CEC.LogicalAddress.BROADCAST)
+
+    const response = _eventPromise.call(this, target, event)
+    const reject = _timeoutReject.call(this, target, this.state_cache_timeout * 1000)
+
+    return this.SendMessage(source, target, opcode, args)
+      .then(() => Promise.race([
+        response,
+        reject
+      ]))
+  }.bind(this)
 
   Stop = function() {
     if (this.client) {
@@ -400,24 +429,14 @@ export default class CECMonitor extends EventEmitter {
  * ***/
 // eslint-disable-next-line no-unused-vars
 const _getUpdatedCache = async function(address) {
-  return await _sendCommand.call(this, address, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CEC.Opcode.REPORT_POWER_STATUS)
+  return await this.SendCommand(this.GetLogicalAddress(), address, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CECMonitor.EVENTS.REPORT_POWER_STATUS)
     .then(() => this.state_manager[address])
-}
-
-const _sendCommand = function(target, message, event) {
-  const response = _eventPromise.call(this, event)
-
-  return this.SendMessage(null, target, message)
-    .then(() => new Promise.race([
-      response,
-      _timeoutReject.call(this, target, 5000)
-    ]))
 }
 
 const _eventPromise = function(target, event) {
   return new Promise((resolve) => {
     this.once(event, packet => {
-      if (packet.target === target){
+      if (packet.source === target){
         return resolve(packet)
       }
       return _eventPromise.call(this, target, event)
@@ -795,20 +814,22 @@ const _processError = function(data){
  */
 const _parseAddress = function(address, def) {
   if (typeof address === 'string') {
-    if (address.indexOf('0x') === 0){
-      address = parseInt(address, 16)
-
+    if (Validate.isHexaNumber(address)){
+      address = Number.parseInt(address, 16)
     }
     else if (Validate.isRoute(address)) {
-      const state = this.state_manager.GetByRoute(address);
+      const state = this.state_manager.GetByRoute(address)
       address = state ? state.logical : def
     }
     else if (CEC.LogicalAddress.hasOwnProperty(address.toLocaleUpperCase())) {
       address = CEC.LogicalAddress[address.toLocaleUpperCase()]
     }
+    else {
+      address = Number.parseInt(address, 10)
+    }
   }
 
-  if (isNaN(address) || address === null) {
+  if (Number.isNaN(address) || address === null) {
     address = def
   }
   else if (address > 15 || address < 0) {

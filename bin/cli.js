@@ -30,6 +30,7 @@ var commands = [
   "osdname", // Output state of name for logical or physical address
   "power", // Output state of power for logical or physical address
   "state", // Get current state cache
+  "cp", // Get current power state
   // cec-client commands
   "ad",
   "as",
@@ -101,6 +102,16 @@ var functions = {
   state: function () {
     console.log(monitor.GetState());
   },
+  cp: function(address) {
+    monitor.SendCommand(null, address, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CECMonitor.EVENTS.REPORT_POWER_STATUS)
+      .then(function(packet) {
+        console.log('POWER', packet.data.str);
+      })
+      .catch(function(error) {
+        console.log('POWER UNKNOWN');
+        console.log(error);
+      });
+  },
   quit: function () {
     monitor.Stop();
     process.exit(0);
@@ -120,7 +131,8 @@ var monitor = new CECMonitor('cec-mon-cli', {
   player: true,          //enable cec-client as player device
   tuner: false,           //enable cec-client as tuner device
   audio: false,           //enable cec-client as audio system device
-  autorestart: true,      //enable autrestart cec-client to avoid some wierd conditions
+  autorestart: true,      //enable autorestart cec-client to avoid some wierd conditions
+  state_cache_timeout: 3, //set timeout to invalidate status cache and search current power state
   no_serial: {            //controls if the monitor restart cec-client when that stop after the usb was unplugged
     reconnect: true,       //enable reconnection attempts when usb is unplugged
     wait_time: 30,          //in seconds - time to do the attempt

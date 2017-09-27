@@ -16,7 +16,7 @@ export default class DeviceState {
     let _route = ''
     let _status = CEC.PowerStatus.UNKNOWN
     let _power = CEC.PowerStatusNames[_status]
-    let _osdname = CEC.LogicalAddressNames[_logical]
+    let _osdname = osd || CEC.LogicalAddressNames[_logical]
     let _primary = false
     let _owned = false
     let _vendorid = CEC.VendorId.UNKNOWN
