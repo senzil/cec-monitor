@@ -30,31 +30,34 @@ export default class CECMonitor extends EventEmitter {
   reconnect_intent;
   params;
   state_manager;
-  state_cache_timeout;
-  auto_update_status_interval;
+  state_cache;
+  command_timeout;
   active_source;
 
   constructor(OSDName, options) {
     super()
     this.ready = false
     this.auto_restarting = false
+    this.reconnect_intent = false
+    this.no_serial = {
+      reconnect: false,
+      wait_time: 30, //in seconds
+      trigger_stop: false
+    }
+
     this.OSDName = OSDName || 'cec-monitor'
     this.auto_restart = options.auto_restart ? options.auto_restart : true
+    this.no_serial = Object.assign(this.no_serial, options.no_serial)
+
     this.address = {
       physical: 0xFFFF,
       primary: CEC.LogicalAddress.UNKNOWN,
       base: CEC.LogicalAddress.UNKNOWN,
       hdmi: options.hdmiport || 1
     }
-    this.no_serial = {
-      reconnect: false,
-      wait_time: 30, //in seconds
-      trigger_stop: false
-    }
-    this.no_serial = Object.assign(this.no_serial, options.no_serial)
-    this.reconnect_intent = false
     this.debug = options.debug
-    this.state_cache_timeout = options.state_cache_timeout
+    this.state_cache = options.state_cache || 30
+    this.command_timeout = options.command_timeout || 3
 
     // Cache of data about logical addresses
     this.state_manager = new StateManager()
@@ -111,6 +114,8 @@ export default class CECMonitor extends EventEmitter {
       _WARNING: '_warning',
       _NOSERIALPORT: '_no_serial_port',
       _NOHDMICORD: '_no_hdmi_cord',
+      _EXPIREDCACHE: '_expired_cache',
+      _UPDATEDCACHE: '_updated_cache',
 
       ABORT: 'ABORT',
       ACTIVE_SOURCE: 'ACTIVE_SOURCE',
@@ -405,7 +410,7 @@ export default class CECMonitor extends EventEmitter {
     target = _parseAddress.call(this, target, CEC.LogicalAddress.BROADCAST)
 
     const response = _eventPromise.call(this, target, event)
-    const reject = _timeoutReject.call(this, target, this.state_cache_timeout * 1000)
+    const reject = _timeoutReject.call(this, target, this.command_timeout * 1000)
 
     return this.SendMessage(source, target, opcode, args)
       .then(() => Promise.race([
@@ -428,9 +433,24 @@ export default class CECMonitor extends EventEmitter {
  *
  * ***/
 // eslint-disable-next-line no-unused-vars
-const _getUpdatedCache = async function(address) {
-  return await this.SendCommand(this.GetLogicalAddress(), address, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CECMonitor.EVENTS.REPORT_POWER_STATUS)
-    .then(() => this.state_manager[address])
+const _getUpdatedState = async function(address) {
+  const primary = this.GetLogicalAddress()
+  return await Promise.all([
+    this.SendCommand(primary, address, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CECMonitor.EVENTS.REPORT_POWER_STATUS)
+      .catch(() => this.state_manager[address].status = CEC.PowerStatus.UNKNOWN),
+    this.SendCommand(primary, address, CEC.Opcode.GIVE_DEVICE_VENDOR_ID, CECMonitor.EVENTS.DEVICE_VENDOR_ID)
+      .catch(() => this.state_manager[address].vendorid = CEC.VendorId.UNKNOWN),
+    this.SendCommand(primary, address, CEC.Opcode.GIVE_PHYSICAL_ADDRESS, CECMonitor.EVENTS.REPORT_PHYSICAL_ADDRESS)
+      .catch(() => void(0)), //we don't change the physical address to avoid comunication problems
+    this.SendCommand(primary, address, CEC.Opcode.GIVE_OSD_NAME, CECMonitor.EVENTS.SET_OSD_NAME)
+      .catch(() => this.state_manager[address].osdname = CEC.LogicalAddressNames[address]),
+    this.SendCommand(primary, address, CEC.Opcode.GET_CEC_VERSION, CECMonitor.EVENTS.CEC_VERSION)
+      .catch(() => this.state_manager[address].osdname = CEC.LogicalAddressNames[address]),
+
+  ]).then(() => {
+    this.emit(CECMonitor.EVENTS._UPDATEDCACHE, this.state_manager)
+    return this.state_manager[address]
+  })
 }
 
 const _eventPromise = function(target, event) {

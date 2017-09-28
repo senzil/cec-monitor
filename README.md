@@ -15,6 +15,7 @@ npm install --save @senzil/cec-monitor
 import {CEC, CECMonitor} from 'cec-monitor';
 
 //All config options are optionals
+//the values are the deafults
 let monitor = new CECMonitor('custom-osdname', {
   debug: false,           // enable/disabled debug events from cec-client
   hdmiport: 1,            // set inital hdmi port
@@ -27,8 +28,10 @@ let monitor = new CECMonitor('custom-osdname', {
   no_serial: {            //controls if the monitor restart cec-client when that stop after the usb was unplugged
     reconnect: false,       //enable reconnection attempts when usb is unplugged
     wait_time: 30,          //in seconds - time to do the attempt
-    trigger_stop: false     //avoid trigger stop event
-  }
+    trigger_stop: false     //false to avoid trigger stop event
+  },
+  state_cache: 30,          //An value greater than 0 (in seconds) enable cache invalidation timeout and request new values
+  command_timeout: 3       //An value greater than 0 (in secconds) meaning the timeout time for SendCommand function
 });
 
 
@@ -180,6 +183,9 @@ This work was based over the work of
 
 * http://www.cec-o-matic.com/
 * https://github.com/patlux/node-cec
+
+#Contributors
+*[Damien Clark](https://github.com/damoclark) (https://damos.world)
 
 # License
 
