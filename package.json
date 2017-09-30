@@ -1,6 +1,6 @@
 {
   "name": "@senzil/cec-monitor",
-  "version": "2.0.0-release.62",
+  "version": "2.0.0-release.63",
   "description": "HDMI-CEC library with a simple monitor written on ES6 to make cec enabled apps.",
   "author": {
     "name": "SENZIL SRL",
@@ -35,10 +35,10 @@
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
-    "babel-env": "^2.4.1",
-    "babel-eslint": "^8.0.0",
+    "babel-eslint": "^8.0.1",
     "babel-plugin-transform-class-properties": "^6.24.1",
-    "eslint": "^4.7.1",
+    "babel-preset-latest-node": "^0.4.0",
+    "eslint": "^4.7.2",
     "pre-commit": "^1.2.2"
   },
   "repository": {
@@ -47,8 +47,8 @@
   },
   "license": "MIT",
   "dependencies": {
+    "deasync-promise": "^1.0.1",
     "death": "^1.1.0",
-    "event-stream": "^3.3.4",
-    "regenerator-runtime": "^0.11.0"
+    "event-stream": "^3.3.4"
   }
 }

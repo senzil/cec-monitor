@@ -20,6 +20,10 @@ export default class StateManager extends Array {
     }
   }
 
+  get timestamp(){
+    return Math.min(...this)
+  }
+
   GetByPhysical(address) {
     return this.find(S => S.physical === address)
   }

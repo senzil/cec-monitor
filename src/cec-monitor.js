@@ -4,9 +4,6 @@
 
 'use strict'
 
-// eslint-disable-next-line no-unused-vars
-import regeneratorRuntime from 'regenerator-runtime'
-
 import {spawn} from 'child_process'
 import {EventEmitter} from 'events'
 import es from 'event-stream'
@@ -16,6 +13,7 @@ import CECTimeoutError from './TimeoutError'
 import StateManager from './StateManager'
 import Convert from './Convert'
 import Validate from './Validate'
+import deasyncPromise from 'deasync-promise'
 
 export default class CECMonitor extends EventEmitter {
 
@@ -30,12 +28,13 @@ export default class CECMonitor extends EventEmitter {
   reconnect_intent;
   params;
   state_manager;
-  state_cache;
+  cache;
   command_timeout;
   active_source;
 
   constructor(OSDName, options) {
     super()
+    this.setMaxListeners(300)
     this.ready = false
     this.auto_restarting = false
     this.reconnect_intent = false
@@ -44,10 +43,16 @@ export default class CECMonitor extends EventEmitter {
       wait_time: 30, //in seconds
       trigger_stop: false
     }
+    this.cache = {
+      enable: true,
+      autorefresh: true,
+      timeout: 30 //in seconds
+    }
 
     this.OSDName = OSDName || 'cec-monitor'
     this.auto_restart = options.auto_restart ? options.auto_restart : true
     this.no_serial = Object.assign(this.no_serial, options.no_serial)
+    this.cache = Object.assign(this.cache, options.cache)
 
     this.address = {
       physical: 0xFFFF,
@@ -208,10 +213,9 @@ export default class CECMonitor extends EventEmitter {
 
     // Return copy of our state information
     if (address === undefined) {
-      return JSON.parse(JSON.stringify(this.state_manager))
+      return JSON.parse(JSON.stringify(_getUpdatedStateManager.call(this)))
     }
-    return JSON.parse(JSON.stringify(this.state_manager[address]))
-    //return JSON.parse(JSON.stringify(_getUpdatedCache.call(this, address)))
+    return JSON.parse(JSON.stringify(_getUpdatedDeviceState.call(this, address)))
   }.bind(this)
 
   /**
@@ -249,7 +253,7 @@ export default class CECMonitor extends EventEmitter {
     if (logical === null) {
       return null
     }
-    return this.state_manager[logical].route
+    return _getUpdatedDeviceState.call(this, logical).route
   }.bind(this)
 
   /**
@@ -274,7 +278,7 @@ export default class CECMonitor extends EventEmitter {
     if (address === null) {
       return ''
     }
-    return this.state_manager[address].osdname
+    return _getUpdatedDeviceState.call(this, address).osdname
   }.bind(this)
 
   /**
@@ -289,7 +293,7 @@ export default class CECMonitor extends EventEmitter {
     if (address === null) {
       return null
     }
-    return this.state_manager[address].status
+    return _getUpdatedDeviceState.call(this, address).status
   }.bind(this)
 
   /**
@@ -304,7 +308,7 @@ export default class CECMonitor extends EventEmitter {
     if (address === null) {
       return null
     }
-    return this.state_manager[address].power
+    return _getUpdatedDeviceState.call(this, address).power
   }.bind(this)
 
   /**
@@ -409,14 +413,10 @@ export default class CECMonitor extends EventEmitter {
     source = _parseAddress.call(this, source, this.GetLogicalAddress())
     target = _parseAddress.call(this, target, CEC.LogicalAddress.BROADCAST)
 
-    const response = _eventPromise.call(this, target, event)
-    const reject = _timeoutReject.call(this, target, this.command_timeout * 1000)
+    let eventHandler = _eventPromise.call(this, target, event, this.command_timeout * 1000)
 
     return this.SendMessage(source, target, opcode, args)
-      .then(() => Promise.race([
-        response,
-        reject
-      ]))
+      .then(() => eventHandler)
   }.bind(this)
 
   Stop = function() {
@@ -432,42 +432,62 @@ export default class CECMonitor extends EventEmitter {
  * THEY SHOULD NOT BE USED BY END USERS AND SHOULD NOT BE EXPORTED
  *
  * ***/
-// eslint-disable-next-line no-unused-vars
-const _getUpdatedState = async function(address) {
-  const primary = this.GetLogicalAddress()
-  return await Promise.all([
-    this.SendCommand(primary, address, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CECMonitor.EVENTS.REPORT_POWER_STATUS)
-      .catch(() => this.state_manager[address].status = CEC.PowerStatus.UNKNOWN),
-    this.SendCommand(primary, address, CEC.Opcode.GIVE_DEVICE_VENDOR_ID, CECMonitor.EVENTS.DEVICE_VENDOR_ID)
-      .catch(() => this.state_manager[address].vendorid = CEC.VendorId.UNKNOWN),
-    this.SendCommand(primary, address, CEC.Opcode.GIVE_PHYSICAL_ADDRESS, CECMonitor.EVENTS.REPORT_PHYSICAL_ADDRESS)
-      .catch(() => void(0)), //we don't change the physical address to avoid comunication problems
-    this.SendCommand(primary, address, CEC.Opcode.GIVE_OSD_NAME, CECMonitor.EVENTS.SET_OSD_NAME)
-      .catch(() => this.state_manager[address].osdname = CEC.LogicalAddressNames[address]),
-    this.SendCommand(primary, address, CEC.Opcode.GET_CEC_VERSION, CECMonitor.EVENTS.CEC_VERSION)
-      .catch(() => this.state_manager[address].osdname = CEC.LogicalAddressNames[address]),
+const _getUpdatedStateManager = function() {
+  if (this.cache.enable && this.cache.timeout > 0 && this.state_manager.timestamp < Date.now() - this.cache.timeout * 1000) {
+    return this.state_manager.map(ds => _getUpdatedDeviceState.call(this, ds.logical))
+  }
 
-  ]).then(() => {
-    this.emit(CECMonitor.EVENTS._UPDATEDCACHE, this.state_manager)
-    return this.state_manager[address]
-  })
+  return this.state_manager
 }
 
-const _eventPromise = function(target, event) {
-  return new Promise((resolve) => {
-    this.once(event, packet => {
+const _getUpdatedDeviceState = function (address) {
+
+  const currentState  = this.state_manager[address]
+
+  if (this.cache.enable && this.cache.timeout > 0 && currentState.timestamp < Date.now() - this.cache.timeout * 1000) {
+    this.emit(CECMonitor.EVENTS._EXPIREDCACHE, currentState)
+
+    if (this.cache.autorefresh) {
+      return deasyncPromise(_getUpdatedDeviceStateAsync.call(this, address))
+    }
+  }
+
+  return currentState
+}
+
+const _getUpdatedDeviceStateAsync = function(address) {
+  const primary = this.GetLogicalAddress()
+  return this.SendCommand(primary, address, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CECMonitor.EVENTS.REPORT_POWER_STATUS)
+    .catch(() => this.state_manager[address].status = CEC.PowerStatus.UNKNOWN)
+    .then(() => {
+      this.emit(CECMonitor.EVENTS._UPDATEDCACHE, this.state_manager[address])
+      return this.state_manager[address]
+    })
+}
+
+const _eventPromise = function(target, event, milisecondsToWait) {
+
+  let listener
+
+  const resolve = new Promise(function(resolve) {
+    listener = packet => {
       if (packet.source === target){
         return resolve(packet)
       }
       return _eventPromise.call(this, target, event)
-    })
-  })
-}
+    }
 
-const _timeoutReject = function(target, milisecondsToWait) {
-  return new Promise((resolve, reject) =>
-    setTimeout(() => reject(new CECTimeoutError(target, milisecondsToWait)), milisecondsToWait).unref()
-  )
+    this.once(event, listener)
+  }.bind(this))
+
+  const reject = new Promise(function(resolve, reject) {
+    setTimeout(function() {
+      this.removeListener(event, listener)
+      return reject(new CECTimeoutError(target, milisecondsToWait))
+    }.bind(this), milisecondsToWait).unref()
+  }.bind(this))
+
+  return Promise.race([resolve, reject])
 }
 
 /**

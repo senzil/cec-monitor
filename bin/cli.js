@@ -71,7 +71,7 @@ var functions = {
     [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14].forEach(function (t) {
       var output = [
         lpad(t,2,'0'),
-        rpad(monitor.GetOSDName(t),14),
+        rpad(monitor.GetOSDName(t),20),
         rpad(monitor.Logical2Physical(t),7),
         rpad('power: '+monitor.GetPowerStatusName(t),35)
       ];
@@ -132,11 +132,16 @@ var monitor = new CECMonitor('cec-mon-cli', {
   tuner: false,           //enable cec-client as tuner device
   audio: false,           //enable cec-client as audio system device
   autorestart: true,      //enable autorestart cec-client to avoid some wierd conditions
-  state_cache_timeout: 3, //set timeout to invalidate status cache and search current power state
+  command_timeout: 3, //set timeout to invalidate status cache and search current power state
   no_serial: {            //controls if the monitor restart cec-client when that stop after the usb was unplugged
     reconnect: true,       //enable reconnection attempts when usb is unplugged
     wait_time: 30,          //in seconds - time to do the attempt
     trigger_stop: false     //avoid trigger stop event
+  },
+  cache: {
+    enable: true,
+    timeout: 30,
+    autorefresh: true
   }
 });
 
