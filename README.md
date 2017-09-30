@@ -30,7 +30,11 @@ let monitor = new CECMonitor('custom-osdname', {
     wait_time: 30,          //in seconds - time to do the attempt
     trigger_stop: false     //false to avoid trigger stop event
   },
-  state_cache: 30,          //An value greater than 0 (in seconds) enable cache invalidation timeout and request new values
+  cache: {
+    enable: false,  //treats the state like a cache, and enable _EXPIREDCACHE event.
+    autorefresh: false, //enable the cache refresh (currently only power status), and enable _UPDATEDCACHE event.
+    timeout: 30  //value greater than 0 (in seconds) enable cache invalidation timeout and request new values if autorefresh is enabled
+  },         
   command_timeout: 3       //An value greater than 0 (in secconds) meaning the timeout time for SendCommand function
 });
 
