@@ -71,6 +71,16 @@ export default class DeviceState {
           return osdname
         }
       },
+      'owned': {
+        enumerable: true,
+        get:  () => privates.get(this)._owned,
+        set: _owned => {
+          const _ = privates.get(this)
+          _._primary = _owned
+          _._timestamp = Date.now()
+          return _owned
+        }
+      },
       'physical': {
         enumerable: true,
         get: () => privates.get(this)._physical,
@@ -85,6 +95,16 @@ export default class DeviceState {
       'power': {
         enumerable: true,
         get:  () => privates.get(this)._power
+      },
+      'primary': {
+        enumerable: true,
+        get:  () => privates.get(this)._primary,
+        set: _primary => {
+          const _ = privates.get(this)
+          _._primary = _primary
+          _._timestamp = Date.now()
+          return _primary
+        }
       },
       'route': {
         enumerable: true,

@@ -31,4 +31,14 @@ export default class StateManager extends Array {
   GetByRoute(route) {
     return this.find(S => S.route === route)
   }
+
+  get primary() {
+    return this.find(S => S.primary === true)
+  }
+
+  set primary(logical) {
+    this.forEach(S => S.primary === false)
+    this[logical].primary = true
+    return this[logical]
+  }
 }

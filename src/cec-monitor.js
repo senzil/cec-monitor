@@ -58,7 +58,6 @@ export default class CECMonitor extends EventEmitter {
 
     this.address = {
       physical: 0xFFFF,
-      primary: CEC.LogicalAddress.UNKNOWN,
       base: CEC.LogicalAddress.UNKNOWN,
       hdmi: options.hdmiport || 1
     }
@@ -233,7 +232,7 @@ export default class CECMonitor extends EventEmitter {
    * @return {number} First logical address used by this instance
    */
   GetLogicalAddress = function() {
-    return this.address.primary
+    return this.state_manager.primary.logical
   }.bind(this)
 
   /**
@@ -780,8 +779,10 @@ const _processNotice = function(data) {
   const regexLogical = /logical\saddress\(es\)\s=\s(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu
   let match = regexLogical.exec(data)
   if (match) {
-    this.address.primary = parseInt(match[2], 10)
-    this.state_manager[this.address.primary].osdname = this.OSDName
+    const logical = Number.parseInt(match[2], 10)
+    this.state_manager[logical].osdname = this.OSDName
+    this.state_manager[logical].owned = true
+    this.state_manager.primary = logical
     this.address.logical = {}
     while (match){
       this.address.logical[match[2]] = true
