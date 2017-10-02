@@ -10,7 +10,7 @@ export default class StateManager extends Array {
 
   constructor (){
     super()
-    for (let state, i = 0; i < 16; i++) {
+    for (let state, i = 0; i < 15; i++) { //avoid save broadcast state
       state = new DeviceState(i)
       //set TV physical address
       if (i===0) {
