@@ -240,7 +240,7 @@ export default class CECMonitor extends EventEmitter {
    * @return {array[number]} Primary logical address used by this instance
    */
   GetLogicalAddresses = function() {
-    return [].concat(Object.keys(this.address.logical))
+    return this.state_manager.owns.map(S => S.logical)
   }.bind(this)
 
   /**
@@ -779,14 +779,14 @@ const _processNotice = function(data) {
   const regexLogical = /logical\saddress\(es\)\s=\s(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu
   let match = regexLogical.exec(data)
   if (match) {
-    const logical = Number.parseInt(match[2], 10)
-    this.state_manager[logical].osdname = this.OSDName
-    this.state_manager[logical].owned = true
-    this.state_manager.primary = logical
-    this.address.logical = {}
+    let logical_address = Number.parseInt(match[2], 10)
+    this.state_manager[logical_address].osdname = this.OSDName
+    this.state_manager[logical_address].own = true
+    this.state_manager.primary = logical_address
     while (match){
-      this.address.logical[match[2]] = true
-      this.state_manager[match[2]].osdname = this.OSDName
+      logical_address = match[2]
+      this.state_manager[logical_address].osdname = this.OSDName
+      this.state_manager[logical_address].own = true
       match = regexLogical.exec(data)
     }
   }
@@ -802,8 +802,8 @@ const _processNotice = function(data) {
   match = regexPhysical.exec(data)
   if (match) {
     this.address.physical = match[1]
-    Object.keys(this.address.logical).forEach( s => {
-      this.state_manager[s].route = this.address.physical
+    this.state_manager.owns.forEach(S => {
+      S.route = match[1]
     })
   }
 

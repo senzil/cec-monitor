@@ -1,6 +1,6 @@
 {
   "name": "@senzil/cec-monitor",
-  "version": "2.0.0-release.69",
+  "version": "2.0.0-release.70",
   "description": "HDMI-CEC library with a simple monitor written on ES6 to make cec enabled apps.",
   "author": {
     "name": "SENZIL SRL",

@@ -41,4 +41,8 @@ export default class StateManager extends Array {
     this[logical].primary = true
     return this[logical]
   }
+
+  get owns() {
+    return this.filter(S => S.own === true)
+  }
 }

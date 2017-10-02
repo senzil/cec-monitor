@@ -71,14 +71,14 @@ export default class DeviceState {
           return osdname
         }
       },
-      'owned': {
+      'own': {
         enumerable: true,
-        get:  () => privates.get(this)._owned,
-        set: _owned => {
+        get:  () => privates.get(this)._own,
+        set: _own => {
           const _ = privates.get(this)
-          _._primary = _owned
+          _._primary = _own
           _._timestamp = Date.now()
-          return _owned
+          return _own
         }
       },
       'physical': {
