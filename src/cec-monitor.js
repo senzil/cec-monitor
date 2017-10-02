@@ -57,7 +57,6 @@ export default class CECMonitor extends EventEmitter {
     this.cache = Object.assign(this.cache, options.cache)
 
     this.address = {
-      physical: 0xFFFF,
       base: CEC.LogicalAddress.UNKNOWN,
       hdmi: options.hdmiport || 1
     }
@@ -224,7 +223,7 @@ export default class CECMonitor extends EventEmitter {
    * @return {string} Physical address used by this instance
    */
   GetPhysicalAddress = function() {
-    return this.address.physical
+    return this.state_manager.primary.route
   }.bind(this)
 
   /**
@@ -801,7 +800,6 @@ const _processNotice = function(data) {
   const regexPhysical = /physical\saddress:\s([\w.]+)/gu
   match = regexPhysical.exec(data)
   if (match) {
-    this.address.physical = match[1]
     this.state_manager.owns.forEach(S => {
       S.route = match[1]
     })
