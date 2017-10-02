@@ -18,7 +18,7 @@ export default class DeviceState {
     let _power = CEC.PowerStatusNames[_status]
     let _osdname = osd || CEC.LogicalAddressNames[_logical]
     let _primary = false
-    let _owned = false
+    let _own = false
     let _vendorid = CEC.VendorId.UNKNOWN
     let _vendor = CEC.VendorIdNames[_vendorid]
     let _timestamp = Date.now()
@@ -30,7 +30,7 @@ export default class DeviceState {
       _cec,
       _cecversion,
       _osdname,
-      _owned,
+      _own,
       _physical,
       _power,
       _primary,
@@ -76,7 +76,7 @@ export default class DeviceState {
         get:  () => privates.get(this)._own,
         set: _own => {
           const _ = privates.get(this)
-          _._primary = _own
+          _._own = _own
           _._timestamp = Date.now()
           return _own
         }
