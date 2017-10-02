@@ -1,6 +1,6 @@
 {
   "name": "@senzil/cec-monitor",
-  "version": "2.0.0-release.66",
+  "version": "2.0.0-release.67",
   "description": "HDMI-CEC library with a simple monitor written on ES6 to make cec enabled apps.",
   "author": {
     "name": "SENZIL SRL",
@@ -19,8 +19,38 @@
   "keywords": [
     "cec",
     "hdmi",
+    "hdmi-cec",
+    "libcec",
+    "cec-client",
     "monitor",
-    "wrapper"
+    "cec-monitor",
+    "Pulse-Eight",
+    "USB-CEC",
+    "Rasberry Pi",
+    "Anynet+",
+    "Aquos Link",
+    "BRAVIA Link",
+    "BRAVIA Sync",
+    "Control for HDMI",
+    "CE-Link",
+    "Regza Link",
+    "E-link",
+    "EasyLink",
+    "Fun-Link",
+    "INlink",
+    "Kuro Link",
+    "NetCommand for HDMI",
+    "Realink for HDMI",
+    "RIHD",
+    "RuncoLink",
+    "SimpLink",
+    "T-Link",
+    "VIERA Link",
+    "HDAVI Control",
+    "EZ-Sync",
+    "wrapper",
+    "node",
+    "nodejs"
   ],
   "pre-commit": [
     "release"
