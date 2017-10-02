@@ -8,8 +8,11 @@ import DeviceState from './DeviceState'
 export default class StateManager extends Array {
   static get [Symbol.species]() { return Array }
 
+  active_source;
+
   constructor (){
     super()
+    this.active_source = null // Default not known
     for (let state, i = 0; i < 15; i++) { //avoid save broadcast state
       state = new DeviceState(i)
       //set TV physical address

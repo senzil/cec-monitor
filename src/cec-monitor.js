@@ -31,7 +31,6 @@ export default class CECMonitor extends EventEmitter {
   state_manager;
   cache;
   command_timeout;
-  active_source;
 
   constructor(OSDName, options) {
     super()
@@ -61,13 +60,10 @@ export default class CECMonitor extends EventEmitter {
       hdmi: options.hdmiport || 1
     }
     this.debug = options.debug
-    this.state_cache = options.state_cache || 30
     this.command_timeout = options.command_timeout || 3
 
     // Cache of data about logical addresses
     this.state_manager = new StateManager()
-
-    this.active_source = null // Default not known
 
     process.on('beforeExit', this.Stop)
     process.on('exit', this.Stop)
@@ -317,7 +313,7 @@ export default class CECMonitor extends EventEmitter {
    * @return {string} Physical address of the source currently selected
    */
   GetActiveSource = function() {
-    return this.active_source
+    return this.state_manager.active_source
   }.bind(this)
 
   WriteRawMessage = function(raw) {
@@ -647,7 +643,7 @@ const _processEvents = function(packet) {
     source = Convert.argsToPhysical(packet.args)
     physical = Convert.physicalToRoute(source)
     // Update our records
-    this.active_source = physical
+    this.state_manager.active_source = physical
     data = {
       val: source,
       str: physical
@@ -719,7 +715,7 @@ const _processEvents = function(packet) {
     to = Convert.argsToPhysical(packet.args.slice(2, 4))
     physical = Convert.physicalToRoute(to)
     // Update our records
-    this.active_source = physical
+    this.state_manager.active_source = physical
     data = {
       from: {
         val: from,
