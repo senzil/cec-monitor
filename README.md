@@ -109,7 +109,7 @@ from `args`, a substructure is created in the `data` property, as shown below fo
 
 ### Sending CEC Messages
 
-There are three APIs to choose from to send a message on the bus.  This section discusses each of these
+There are four APIs to choose from to send a message on the bus.  This section discusses each of these
 methods, with examples.  
 
 The message used in the examples broadcasts a SET_OSD_NAME message on the bus, setting playbackdevice1 
@@ -135,12 +135,12 @@ protocol `opcode`.  Unlike `WriteRawMessage` which takes a string, and is sent u
 has a parameter list, and constructs a raw command from these parameters to send to `cec-client`.  
 
 ```javascript
-monitor.SendMessage(CEC.LogicalAddress.PLAYBACKDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.SET_OSD_NAME,[0x46,0x72,0x69,0x73,0x62,0x65,0x65]);
+monitor.WriteMessage(CEC.LogicalAddress.PLAYBACKDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.SET_OSD_NAME,[0x46,0x72,0x69,0x73,0x62,0x65,0x65]);
 ```
 
 #### SendMessage
 
-`WriteMessage(source, target, opcode, args)`
+`SendMessage(source, target, opcode, args)`
 
 `SendMessage` is a high-level API of the same form as WriteMessage, but accepts a range of different data
 types and formats as input.  This is useful when sending messages from user input.  The following examples
@@ -167,6 +167,31 @@ monitor.SendMessage(CEC.LogicalAddress.UNREGISTERED, CEC.LogicalAddress.BROADCAS
 monitor.SendMessage(null,null, 'set_osd_name','Frisbee');
 ```
 
+#### SendCommand
+
+`SendCommand(source, target, opcode, event, args)`
+
+`SendCommand` is a high-level API of the same form as SendMessage, but adds an event parameter to wait for for a message as response.
+This is useful when sending messages from user input and expects a response from the device.  The following examples
+illustrate how to use SendCommand
+
+```javascript
+monitor.SendCommand(CEC.LogicalAddress.PLAYBACKDEVICE1, CEC.LogicalAddress.TV, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CECMonitor.EVENTS.REPORT_POWER_STATUS)
+.then(packet => {
+  console.log(packet)
+//{
+//  "type": "TRAFFIC", "number": "82784", "flow": "IN", 
+//  "source": 1, "target": 4, "opcode": 144, "args": [0],
+//  "event": "REPORT_POWER_STATUS", 
+//  "data": {"val": 0, "str": "ON"}
+//}
+})
+.catch(e => {
+  console.error(e);
+//Error: CEC monitor hasn't gotten response in some time (3000 ms) from 0
+});
+```
+
 ### cli.js
 
 You can experiment with how cec-monitor works and the codes generated with your HDMI connected equipment by 
@@ -177,9 +202,12 @@ autocompletion of commands to see what it does and how to use it.
 ## Roadmap
 
 * ~~Improve constructor to improve cec-client configuration~~
-* Implement more events with more context info
+* ~~Implement more events with more context info~~
+* Implement more and more events with more context info
 * Implement some user control actions as special events (combining USER_CONTROL_PRESSED and USERCONTROL RELEASE events)
 * **Implement a ceclib adapter to avoid use a cec-client wrapper**
+* Implement HDMI 2.0
+
 
 ## Credits
 **_nanos gigantum humeris insidentes_**
