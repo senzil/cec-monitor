@@ -18,6 +18,7 @@ import deasyncPromise from 'deasync-promise'
 export default class CECMonitor extends EventEmitter {
 
   OSDName;
+  com_port;
   debug;
   client;
   ready;
@@ -50,6 +51,7 @@ export default class CECMonitor extends EventEmitter {
     }
 
     this.OSDName = OSDName || 'cec-monitor'
+    this.com_port = options.com_port || ''
     this.auto_restart = options.auto_restart ? options.auto_restart : true
     this.no_serial = Object.assign(this.no_serial, options.no_serial)
     this.cache = Object.assign(this.cache, options.cache)
@@ -98,7 +100,7 @@ export default class CECMonitor extends EventEmitter {
       this.params.push('-t', 'a')
     }
 
-    this.params.push('-o', this.OSDName, '-d', '31', '-p', this.address.hdmi.toString())
+    this.params.push('-o', this.OSDName, '-d', '31', '-p', this.address.hdmi.toString(), this.com_port)
 
     _initCecClient.call(this)
   }

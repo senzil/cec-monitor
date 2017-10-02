@@ -17,6 +17,7 @@ import {CEC, CECMonitor} from 'cec-monitor';
 //All config options are optionals
 //the values are the deafults
 let monitor = new CECMonitor('custom-osdname', {
+  com_port: ''            //set com port to use (see cec-client -l)
   debug: false,           // enable/disabled debug events from cec-client
   hdmiport: 1,            // set inital hdmi port
   processManaged: false,  // set/unset handlers to avoid unclear process exit.
