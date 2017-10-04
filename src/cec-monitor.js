@@ -226,7 +226,7 @@ export default class CECMonitor extends EventEmitter {
    * Get first logical address of this device
    * @return {number} First logical address used by this instance
    */
-  GetLogicalAddress = function() {
+  quitgicalAddress = function() {
     return this.state_manager.primary.logical
   }.bind(this)
 
@@ -771,18 +771,17 @@ const _processEvents = function(packet) {
  * @private
  */
 const _processNotice = function(data) {
-  const regexLogical = /logical\saddress\(es\)\s=\s(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu
+  const regexLogical = /logical\saddress\(es\)\s=\s((Recorder|Playback|Tuner|Audio)\s\d?\s?\(\d\)\s){1,4}/gu
   let match = regexLogical.exec(data)
   if (match) {
-    let logical_address = Number.parseInt(match[2], 10)
-    this.state_manager[logical_address].osdname = this.OSDName
-    this.state_manager[logical_address].own = true
-    this.state_manager.primary = logical_address
-    while (match){
-      logical_address = match[2]
+    const regexAddresses = /(Recorder\s\d\s|Playback\s\d\s|Tuner\s\d\s|Audio\s)\(?(\d)\)/gu
+    let innerMatch = regexAddresses.exec(match[0])
+    this.state_manager.primary = Number.parseInt(innerMatch[2], 10)
+    while (innerMatch){
+      let logical_address = Number.parseInt(innerMatch[2], 10)
       this.state_manager[logical_address].osdname = this.OSDName
       this.state_manager[logical_address].own = true
-      match = regexLogical.exec(data)
+      innerMatch = regexAddresses.exec(match[0])
     }
   }
 

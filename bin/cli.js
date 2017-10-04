@@ -125,10 +125,10 @@ var functions = {
 //All config options are optionals
 var monitor = new CECMonitor('cec-mon-cli', {
   debug: false,           // enable/disabled debug events from cec-client
-  hdmiport: 2,            // set inital hdmi port
+  hdmiport: 1,            // set inital hdmi port
   processManaged: false,  // set/unset handlers to avoid unclear process exit.
   recorder: true,         //enable cec-client as recorder device
-  player: true,          //enable cec-client as player device
+  player: false,          //enable cec-client as player device
   tuner: false,           //enable cec-client as tuner device
   audio: false,           //enable cec-client as audio system device
   autorestart: true,      //enable autorestart cec-client to avoid some wierd conditions
