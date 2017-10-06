@@ -226,7 +226,7 @@ export default class CECMonitor extends EventEmitter {
    * Get first logical address of this device
    * @return {number} First logical address used by this instance
    */
-  quitgicalAddress = function() {
+  GetLogicalAddress = function() {
     return this.state_manager.primary.logical
   }.bind(this)
 
