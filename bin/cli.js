@@ -31,6 +31,7 @@ var commands = [
   'power', // Output state of power for logical or physical address
   'state', // Get current state cache
   'cp', // Get current power state
+  'hdmi', // Set HDMI port
   // cec-client commands
   'ad',
   'as',
@@ -111,6 +112,9 @@ var functions = {
         console.log('POWER UNKNOWN')
         console.log(error)
       })
+  },
+  hdmi: function(port) {
+    monitor.state_manager.hdmi = Number.parseInt(port, 10)
   },
   quit: function () {
     monitor.Stop()

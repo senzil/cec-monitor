@@ -17,7 +17,7 @@ import {CEC, CECMonitor} from 'cec-monitor';
 //All config options are optionals
 //the values are the deafults
 let monitor = new CECMonitor('custom-osdname', {
-  com_port: ''            //set com port to use (see cec-client -l)
+  com_port: '',            //set com port to use (see cec-client -l)
   debug: false,           // enable/disabled debug events from cec-client
   hdmiport: 1,            // set inital hdmi port
   processManaged: false,  // set/unset handlers to avoid unclear process exit.
@@ -98,7 +98,7 @@ from `args`, a substructure is created in the `data` property, as shown below fo
 ```json
 {
   "type": "TRAFFIC", "number": "23553258", "flow": "IN",
-  "source": 0, "target": 1 5, "opcode": 128, "args": [0, 0, 16, 0],
+  "source": 0, "target": "1 5", "opcode": 128, "args": [0, 0, 16, 0],
   "event": "ROUTING_CHANGE",
   "data": {
     "from": {"val": 0, "str": "0.0.0.0"},
@@ -149,7 +149,7 @@ illustrate how to use SendMessage
 ```javascript
 monitor.SendMessage(CEC.LogicalAddress.PLAYBACKDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.SET_OSD_NAME,[0x46,0x72,0x69,0x73,0x62,0x65,0x65]);
 
-monitor.SendMessage(4, 15, 70, [70,114,105,115,98,101,101];
+monitor.SendMessage(4, 15, 70, [70,114,105,115,98,101,101]);
 
 monitor.SendMessage('0x4', '0xF', '0x46', [0x46,0x72,0x69,0x73,0x62,0x65,0x65]);
 
@@ -203,6 +203,7 @@ autocompletion of commands to see what it does and how to use it.
 
 * ~~Improve constructor to improve cec-client configuration~~
 * ~~Implement more events with more context info~~
+* ~Implement RPI support~~
 * Implement more and more events with more context info
 * Implement some user control actions as special events (combining USER_CONTROL_PRESSED and USERCONTROL RELEASE events)
 * **Implement a ceclib adapter to avoid use a cec-client wrapper**

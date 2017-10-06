@@ -55,10 +55,6 @@ export default class CECMonitor extends EventEmitter {
     this.no_serial = Object.assign(this.no_serial, options.no_serial)
     this.cache = Object.assign(this.cache, options.cache)
 
-    this.address = {
-      base: CEC.LogicalAddress.UNKNOWN,
-      hdmi: options.hdmiport || 1
-    }
     this.debug = options.debug
     this.command_timeout = options.command_timeout || 3
 
@@ -94,7 +90,7 @@ export default class CECMonitor extends EventEmitter {
       this.params.push('-t', 'a')
     }
 
-    this.params.push('-o', this.OSDName, '-d', '31', '-p', this.address.hdmi.toString(), this.com_port)
+    this.params.push('-o', this.OSDName, '-d', '31', '-p', options.hdmiport || 1, this.com_port)
 
     _initCecClient.call(this)
   }
@@ -788,8 +784,8 @@ const _processNotice = function(data) {
   const regexDevice = /base\sdevice:\s\w+\s\((\d{1,2})\),\sHDMI\sport\snumber:\s(\d{1,2}),/gu
   match = regexDevice.exec(data)
   if (match) {
-    this.address.base = parseInt(match[1], 10)
-    this.address.hdmi = parseInt(match[2], 10)
+    this.state_manager.base = parseInt(match[1], 10)
+    this.state_manager.hdmi = parseInt(match[2], 10)
   }
 
   const regexPhysical = /physical\saddress:\s([\w.]+)/gu
