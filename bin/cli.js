@@ -10,113 +10,113 @@
  * Created by Damien Clark (damo.clarky@gmail.com)
  */
 
-var c = require('../index');
+var c = require('../index')
 
-var CEC = c.CEC;
-var CECMonitor = c.CECMonitor;
-var readline = require('readline');
+var CEC = c.CEC
+var CECMonitor = c.CECMonitor
+var readline = require('readline')
 
 ///////////////////////////////////////////////////////////////////////////////
 // cli commands - see man cec-client
 ///////////////////////////////////////////////////////////////////////////////
 var commands = [
   // cli.js commands
-  "active", // Output state on current active source
-  "quit", // Quit cli.js
-  "physical", // Give physical address of given logical address
-  "logical", // Give primary logical address of given physical address
-  "address", // Give state of cli.js logical and physical address
-  "addresses", // Output current state information for all logical addresses
-  "osdname", // Output state of name for logical or physical address
-  "power", // Output state of power for logical or physical address
-  "state", // Get current state cache
-  "cp", // Get current power state
+  'active', // Output state on current active source
+  'quit', // Quit cli.js
+  'physical', // Give physical address of given logical address
+  'logical', // Give primary logical address of given physical address
+  'address', // Give state of cli.js logical and physical address
+  'addresses', // Output current state information for all logical addresses
+  'osdname', // Output state of name for logical or physical address
+  'power', // Output state of power for logical or physical address
+  'state', // Get current state cache
+  'cp', // Get current power state
   // cec-client commands
-  "ad",
-  "as",
-  "at",
-  "bl",
-  "is",
-  "la",
-  "lad",
-  "lang",
-  "log",
-  "mon",
-  "mute",
-  "name",
-  "on",
-  "osd",
-  "p",
-  "pa",
-  "ping",
-  "poll",
-  "pow",
-  "scan",
-  "self",
-  "sp",
-  "spl",
-  "standby",
-  "tx",
-  "txn",
-  "ven",
-  "ver",
-  "voldown",
-  "volup"
-];
+  'ad',
+  'as',
+  'at',
+  'bl',
+  'is',
+  'la',
+  'lad',
+  'lang',
+  'log',
+  'mon',
+  'mute',
+  'name',
+  'on',
+  'osd',
+  'p',
+  'pa',
+  'ping',
+  'poll',
+  'pow',
+  'scan',
+  'self',
+  'sp',
+  'spl',
+  'standby',
+  'tx',
+  'txn',
+  'ven',
+  'ver',
+  'voldown',
+  'volup'
+]
 ///////////////////////////////////////////////////////////////////////////////
 // cli.js local functions
 ///////////////////////////////////////////////////////////////////////////////
 var functions = {
   addresses: function () {
-    [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14].forEach(function (t) {
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].forEach(function (t) {
       var output = [
-        lpad(t,2,'0'),
-        rpad(monitor.GetOSDName(t),20),
-        rpad(monitor.Logical2Physical(t),7),
-        rpad('power: '+monitor.GetPowerStatusName(t),35)
-      ];
-      console.log('['+output.join(']  [')+']');
-    });
+        lpad(t, 2, '0'),
+        rpad(monitor.GetOSDName(t), 20),
+        rpad(monitor.Logical2Physical(t), 7),
+        rpad('power: '+monitor.GetPowerStatusName(t), 35)
+      ]
+      console.log('['+output.join(']  [')+']')
+    })
   },
   address: function () {
-    console.log('My address:');
-    console.log(lpad('logical addresses: ',19)+monitor.GetLogicalAddresses().join(', '));
-    console.log(lpad('primary logical: ',19)+monitor.GetLogicalAddress());
-    console.log(lpad('physical: ',19)+monitor.GetPhysicalAddress());
+    console.log('My address:')
+    console.log(lpad('logical addresses: ', 19)+monitor.GetLogicalAddresses().join(', '))
+    console.log(lpad('primary logical: ', 19)+monitor.GetLogicalAddress())
+    console.log(lpad('physical: ', 19)+monitor.GetPhysicalAddress())
   },
   active: function () {
-    console.log('active source: '+monitor.GetActiveSource());
+    console.log('active source: '+monitor.GetActiveSource())
   },
   logical: function (physical) {
-    console.log('primary logical address: '+monitor.Physical2Logical(physical));
+    console.log('primary logical address: '+monitor.Physical2Logical(physical))
   },
   physical: function (logical) {
-    console.log('physical address: '+monitor.Logical2Physical(logical));
+    console.log('physical address: '+monitor.Logical2Physical(logical))
   },
   power: function (address) {
-    console.log('power status: '+monitor.GetPowerStatusName(address)+' ('+monitor.GetPowerStatus(address)+')');
+    console.log('power status: '+monitor.GetPowerStatusName(address)+' ('+monitor.GetPowerStatus(address)+')')
   },
   osdname: function (address) {
-    console.log('OSD name: '+monitor.GetOSDName(address));
+    console.log('OSD name: '+monitor.GetOSDName(address))
   },
   state: function () {
-    console.log(monitor.GetState());
+    console.log(monitor.GetState())
   },
   cp: function(address) {
     monitor.SendCommand(null, address, CEC.Opcode.GIVE_DEVICE_POWER_STATUS, CECMonitor.EVENTS.REPORT_POWER_STATUS)
       .then(function(packet) {
-        console.log('POWER', packet.data.str);
+        console.log('POWER', packet.data.str)
       })
       .catch(function(error) {
-        console.log('POWER UNKNOWN');
-        console.log(error);
-      });
+        console.log('POWER UNKNOWN')
+        console.log(error)
+      })
   },
   quit: function () {
-    monitor.Stop();
-    process.exit(0);
+    monitor.Stop()
+    process.exit(0)
   }
-};
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // instantiate cec-monitor
@@ -143,12 +143,12 @@ var monitor = new CECMonitor('cec-mon-cli', {
     timeout: 30,
     autorefresh: true
   }
-});
+})
 
 
 monitor.once(CECMonitor.EVENTS._READY, function() {
-  functions.address();
-  console.log( ' -- READY -- ' );
+  functions.address()
+  console.log( ' -- READY -- ' )
   // cec-client commands
   // monitor.WriteRawMessage('on 0');
   // monitor.WriteRawMessage('scan');
@@ -166,29 +166,29 @@ monitor.once(CECMonitor.EVENTS._READY, function() {
   // monitor.SendMessage(CEC.LogicalAddress.UNREGISTERED, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE,'2.0.0.0');
   // monitor.SendMessage(CEC.LogicalAddress.UNREGISTERED, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE,[0x20,0x0);
 
-  rl.prompt();
-});
+  rl.prompt()
+})
 
 function displayPayload(packet) {
-  console.log(JSON.stringify(packet));
-  rl.prompt();
+  console.log(JSON.stringify(packet))
+  rl.prompt()
 }
 
 // Any Traffic containing an opcode
-monitor.on(CECMonitor.EVENTS._OPCODE,displayPayload);
+monitor.on(CECMonitor.EVENTS._OPCODE, displayPayload)
 
 // If the cec-client pipe is closed
-monitor.on(CECMonitor.EVENTS._STOP,function () {
+monitor.on(CECMonitor.EVENTS._STOP, function () {
   console.log('cec-client exit')
-  rl.prompt();
-});
+  rl.prompt()
+})
 
 // Debug messages from cec-client
 monitor.on(CECMonitor.EVENTS._DEBUG, function(data) {
   // set 'debug: true' on new CECMonitor
-  console.log( '[DEBUG] '+JSON.stringify(data));
-  rl.prompt();
-});
+  console.log( '[DEBUG] '+JSON.stringify(data))
+  rl.prompt()
+})
 
 
 // monitor.on(CECMonitor.EVENTS.ACTIVE_SOURCE,displayPayload);
@@ -215,9 +215,9 @@ monitor.on(CECMonitor.EVENTS._DEBUG, function(data) {
 
 
 // Capture lowercase labels for opcodes
-const opcode = toLowerObject(CEC.Opcode);
+const opcode = toLowerObject(CEC.Opcode)
 // Capture lowercase labels for addresses
-const logicaladdress = toLowerObject(CEC.LogicalAddress);
+const logicaladdress = toLowerObject(CEC.LogicalAddress)
 
 // Use readline to provide cli interface, with tab autocompletion
 const rl = readline.createInterface({
@@ -225,122 +225,123 @@ const rl = readline.createInterface({
   output: process.stdout,
   prompt: 'CEC-MON> ',
   completer: function(line) {
-    var tokens = line.split(/\s+/); // /(?<!\\)\s+/
-    const level = tokens.length;
-    if(level === 1) { // complete top-level commands
+    var tokens = line.split(/\s+/) // /(?<!\\)\s+/
+    const level = tokens.length
+    var hits
+    if (level === 1) { // complete top-level commands
       // test for matching commands
-      var hits = commands.filter(function(c) { return c.startsWith(tokens[0].toLocaleLowerCase());});
+      hits = commands.filter(function(c) { return c.startsWith(tokens[0].toLocaleLowerCase())})
       // Advance a space so user can continue with next option
-      if(hits.length === 1) hits[0] += ' ';
-      return [hits.length ? hits : commands, tokens[level-1]];
+      if (hits.length === 1) hits[0] += ' '
+      return [hits.length ? hits : commands, tokens[level-1]]
     }
-    if((level === 2 || level === 3) && tokens[0] === 'tx') { // complete logical addresses for tx command
+    if ((level === 2 || level === 3) && tokens[0] === 'tx') { // complete logical addresses for tx command
       // test for matching logical address names
-      var hits = Object.keys(logicaladdress).filter(function(c) {
-        return c.startsWith(tokens[level-1].toLocaleLowerCase());
-      });
-      if(hits.length === 1) hits[0] += ' ';
-      return [hits.length ? hits.sort() : Object.keys(logicaladdress).sort(), tokens[level-1]];
+      hits = Object.keys(logicaladdress).filter(function(c) {
+        return c.startsWith(tokens[level-1].toLocaleLowerCase())
+      })
+      if (hits.length === 1) hits[0] += ' '
+      return [hits.length ? hits.sort() : Object.keys(logicaladdress).sort(), tokens[level-1]]
     }
-    if(level === 4 && tokens[0] === 'tx') { // complete opcode for tx command
+    if (level === 4 && tokens[0] === 'tx') { // complete opcode for tx command
       // test for matching opcodes
-      var hits = Object.keys(opcode).filter(function (c) { return c.startsWith(tokens[level-1].toLocaleLowerCase()); });
+      hits = Object.keys(opcode).filter(function (c) { return c.startsWith(tokens[level-1].toLocaleLowerCase()) })
       // Advance a space so user can continue with next option
-      if(hits.length === 1) hits[0] += ' ';
-      return [hits.length ? hits.sort() : Object.keys(opcode).sort(), tokens[level-1]];
+      if (hits.length === 1) hits[0] += ' '
+      return [hits.length ? hits.sort() : Object.keys(opcode).sort(), tokens[level-1]]
     }
-    return [[],''];
+    return [[], '']
   }
-});
+})
 
-rl.prompt();
+rl.prompt()
 
 // Process entered command
 rl.on('line', function(line) {
-  line = line.trim();
-  if(line === '') {
-    rl.prompt();
-    return;
+  line = line.trim()
+  if (line === '') {
+    rl.prompt()
+    return
   }
 
   // Split commands by whitespace
-  var tokens = line.split(/\s+/);
-  if(tokens.length > 2 && tokens[0] === 'tx') { // If tx, then resolve text labels for addresses and opcodes to bytes
-    tokens.shift(); //Throw away tx
+  var tokens = line.split(/\s+/)
+  if (tokens.length > 2 && tokens[0] === 'tx') { // If tx, then resolve text labels for addresses and opcodes to bytes
+    tokens.shift() //Throw away tx
 
-    if(logicaladdress.hasOwnProperty(tokens[0])) { // src
-      tokens[0] = logicaladdress[tokens[0]];
+    if (logicaladdress.hasOwnProperty(tokens[0])) { // src
+      tokens[0] = logicaladdress[tokens[0]]
     }
     // else {
     //   tokens[0] = parseInt(tokens[0],16);
     // }
 
-    if(logicaladdress.hasOwnProperty(tokens[1])) { // dest
-      tokens[1] = logicaladdress[tokens[1]];
+    if (logicaladdress.hasOwnProperty(tokens[1])) { // dest
+      tokens[1] = logicaladdress[tokens[1]]
     }
     // else {
     //   tokens[1] = parseInt(tokens[1],16);
     // }
 
-    if(opcode.hasOwnProperty(tokens[2])) { // opcode - minimum required params for tx - we are going to send
-      tokens[2] = CEC.Opcode[tokens[2].toLocaleUpperCase()];
+    if (opcode.hasOwnProperty(tokens[2])) { // opcode - minimum required params for tx - we are going to send
+      tokens[2] = CEC.Opcode[tokens[2].toLocaleUpperCase()]
     }
     // else {
     //   tokens[2] = parseInt(tokens[2],16);
     // }
 
-    var args = tokens.slice(3); // Capture remaining tokens as args for opcode
+    var args = tokens.slice(3) // Capture remaining tokens as args for opcode
     // If only one arg and not numeric, then assume its not a literal code byte and don't store as array
     // let cec-monitor process
-    if(args.length === 1 && !args[0].toString(10).match(/^\d+$/)) {
-      args = args[0];
+    if (args.length === 1 && !args[0].toString(10).match(/^\d+$/)) {
+      args = args[0]
     }
-    tokens = tokens.slice(0,3); // Strip args from tokens array
-    tokens.push(args); // Append args as a single value or an array reference
-    console.log('Calling: monitor.SendMessage('+JSON.stringify(tokens)+')');
-    monitor.SendMessage.apply(monitor,tokens);
-    rl.prompt();
-    return;
+    tokens = tokens.slice(0, 3) // Strip args from tokens array
+    tokens.push(args) // Append args as a single value or an array reference
+    console.log('Calling: monitor.SendMessage('+JSON.stringify(tokens)+')')
+    monitor.SendMessage.apply(monitor, tokens)
+    rl.prompt()
+    return
   }
   if (functions.hasOwnProperty(tokens[0])) { // not cec-client commands
-    functions[tokens[0]].apply(null,tokens.slice(1));
-    rl.prompt();
-    return;
+    functions[tokens[0]].apply(null, tokens.slice(1))
+    rl.prompt()
+    return
   }
-  console.log('Sending to cec-client: "'+line+'"');
-  monitor.WriteRawMessage(line);
-  rl.prompt();
+  console.log('Sending to cec-client: "'+line+'"')
+  monitor.WriteRawMessage(line)
+  rl.prompt()
 }).on('close', function() {
-  console.log('cli.js terminating');
-});
+  console.log('cli.js terminating')
+})
 
 function toLowerObject(obj) {
-  var data = {};
+  var data = {}
   Object.keys(obj).forEach(function (k) {
-    data[k.toLocaleLowerCase()] = obj[k];
-  });
-  return data;
+    data[k.toLocaleLowerCase()] = obj[k]
+  })
+  return data
 }
 
 function rpad(str, size, pad) {
-  var s = padding(size, str, pad);
-  return str+s;
+  var s = padding(size, str, pad)
+  return str+s
 }
 
 function padding(size, str, pad) {
-  if(pad === undefined)
-    pad = ' ';
-  if(str === null)
-    str = 'null';
-  else if(str === undefined)
-    str = 'undefined';
-  var s = new Array(size - str.toString().length).fill(pad).join('');
-  return s;
+  if (pad === undefined)
+    pad = ' '
+  if (str === null)
+    str = 'null'
+  else if (str === undefined)
+    str = 'undefined'
+  var s = new Array(size - str.toString().length).fill(pad).join('')
+  return s
 }
 
 function lpad(str, size, pad) {
-  var s = padding(size, str, pad);
-  return s+str;
+  var s = padding(size, str, pad)
+  return s+str
 }
 
 
