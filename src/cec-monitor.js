@@ -512,6 +512,7 @@ const _onClose = function() {
     setTimeout(_initCecClient.bind(this), 15000)
   }
   else if (this.no_serial.trigger_stop || !this.reconnect_intent) {
+    clearInterval(this.user_control_hold_interval_ref)
     return this.emit(CECMonitor.EVENTS._STOP)
   } else if (this.reconnect_intent) {
     setTimeout(_initCecClient.bind(this), this.no_serial.wait_time * 1000)
@@ -774,7 +775,7 @@ const _processEvents = function(packet) {
       str: CEC.UserControlCodeNames[packet.args[0]]
     }
     clearInterval(this.user_control_hold_interval_ref)
-    this.user_control_hold_interval_ref = setInterval(() => this.emit(CECMonitor.EVENTS._USERCONTROLHOLD, data), this.user_control_hold_interval)
+    this.user_control_hold_interval_ref = setInterval(() => this.emit(CECMonitor.EVENTS._USERCONTROLHOLD, data), this.user_control_hold_interval).unref()
     break
 
   case CEC.Opcode.USER_CONTROL_RELEASE:

@@ -91,6 +91,8 @@ Packets containing the following opcodes that are received are parsed, with the 
 * CEC.Opcode.REPORT_POWER_STATUS
 * CEC.Opcode.ROUTING_CHANGE
 * CEC.Opcode.SET_OSD_NAME
+* CEC.Opcode.USER_CONTROL_PRESSED
+* CEC.Opcode.USER_CONTROL_RELEASE
 
 The `data` property contains the raw value, and a string representation of the parsed results stored
 in the `arg` property, based on the `event` type / `opcode` value.  Where multiple values are parsed
