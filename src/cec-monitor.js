@@ -31,6 +31,8 @@ export default class CECMonitor extends EventEmitter {
   state_manager;
   cache;
   command_timeout;
+  user_control_hold_interval;
+  user_control_hold_interval_ref;
 
   constructor(OSDName, options) {
     super()
@@ -57,6 +59,8 @@ export default class CECMonitor extends EventEmitter {
 
     this.debug = options.debug
     this.command_timeout = options.command_timeout || 3
+    this.user_control_hold_interval = options.user_control_hold_interval || 1000
+    this.user_control_hold_interval_ref = null
 
     // Cache of data about logical addresses
     this.state_manager = new StateManager()
@@ -113,6 +117,7 @@ export default class CECMonitor extends EventEmitter {
       _NOHDMICORD: '_no_hdmi_cord',
       _EXPIREDCACHE: '_expired_cache',
       _UPDATEDCACHE: '_updated_cache',
+      _USERCONTROLHOLD: '_user_control_hold',
 
       ABORT: 'ABORT',
       ACTIVE_SOURCE: 'ACTIVE_SOURCE',
@@ -749,6 +754,36 @@ const _processEvents = function(packet) {
       return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command IMAGE_VIEW_ON with bad args')
     }
     break
+
+  case CEC.Opcode.MENU_REQUEST:
+    if (packet.args.length !== 1) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command MENU_REQUEST with bad args')
+    }
+    data = {
+      val: packet.args[0],
+      str: CEC.MenuRequestTypeNames[packet.args[0]]
+    }
+    break
+
+  case CEC.Opcode.USER_CONTROL_PRESSED:
+    if (packet.args.length !== 1) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command USER_CONTROL_PRESSED with bad args')
+    }
+    data = {
+      val: packet.args[0],
+      str: CEC.UserControlCodeNames[packet.args[0]]
+    }
+    clearInterval(this.user_control_hold_interval_ref)
+    this.user_control_hold_interval_ref = setInterval(() => this.emit(CECMonitor.EVENTS._USERCONTROLHOLD, data), this.user_control_hold_interval)
+    break
+
+  case CEC.Opcode.USER_CONTROL_RELEASE:
+    clearInterval(this.user_control_hold_interval_ref)
+    if (packet.args.length !== 0) {
+      return this.emit(CECMonitor.EVENTS._ERROR, 'opcode command USER_CONTROL_RELEASE with bad args')
+    }
+    break
+
   }
 
   packet.data = data

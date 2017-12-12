@@ -36,7 +36,8 @@ let monitor = new CECMonitor('custom-osdname', {
     autorefresh: false, //enable the cache refresh (currently only power status), and enable _UPDATEDCACHE event.
     timeout: 30  //value greater than 0 (in seconds) enable cache invalidation timeout and request new values if autorefresh is enabled
   },         
-  command_timeout: 3       //An value greater than 0 (in secconds) meaning the timeout time for SendCommand function
+  command_timeout: 3,       //An value greater than 0 (in secconds) meaning the timeout time for SendCommand function
+  user_control_hold_interval: 1000 //An value greater than 0 (in miliseconds) meaning the interval for emit the special _USERCONTROLHOLD event
 });
 
 
@@ -203,9 +204,9 @@ autocompletion of commands to see what it does and how to use it.
 
 * ~~Improve constructor to improve cec-client configuration~~
 * ~~Implement more events with more context info~~
-* ~Implement RPI support~~
+* ~~Implement RPI support~~
 * Implement more and more events with more context info
-* Implement some user control actions as special events (combining USER_CONTROL_PRESSED and USERCONTROL RELEASE events)
+* ~~Implement some user control actions as special events (combining USER_CONTROL_PRESSED and USERCONTROL RELEASE events)~~
 * **Implement a ceclib adapter to avoid use a cec-client wrapper**
 * Implement HDMI 2.0
 
