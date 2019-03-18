@@ -23,7 +23,7 @@ monitor.on(CECMonitor.EVENTS._DATA, console.log);
 
 monitor.once(CECMonitor.EVENTS._READY, function() {
   console.log( ' -- READY -- ' );
-  monitor.WriteMessage(CEC.LogicalAddress.RECORDINGDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE, [monitor.address.physical >> 8, monitor.address.physical & 0xFF]);
+  monitor.WriteMessage(CEC.LogicalAddress.RECORDINGDEVICE1, CEC.LogicalAddress.BROADCAST, CEC.Opcode.ACTIVE_SOURCE, [monitor.state_manager.primary.physical >> 8, monitor.state_manager.primary.physical & 0xFF]);
 });
 
 monitor.once(CECMonitor.EVENTS._NOTICE, function() {
@@ -66,6 +66,11 @@ monitor.on(CECMonitor.EVENTS.REPORT_POWER_STATUS, function (packet, _status) {
 
 monitor.on(CECMonitor.EVENTS.ROUTING_CHANGE, function(packet, from, to) {
   console.log('--ROUTING CHANGE--');
+  console.log(packet, from, to);
+});
+
+monitor.on(CECMonitor.EVENTS.ACTIVE_SOURCE, function(packet, from, to) {
+  console.log('--ACTIVE SOURCE--');
   console.log(packet, from, to);
 });
 

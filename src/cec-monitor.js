@@ -6,14 +6,14 @@
 
 import {spawn} from 'child_process'
 import {EventEmitter} from 'events'
-import es from 'event-stream'
+import estream from 'event-stream'
+import deasync from 'deasync'
 import CEC from './HDMI-CEC.1.4'
 import ON_DEATH from 'death'
 import CECTimeoutError from './TimeoutError'
 import StateManager from './StateManager'
 import Convert from './Convert'
 import Validate from './Validate'
-import deasyncPromise from 'deasync-promise'
 
 export default class CECMonitor extends EventEmitter {
 
@@ -22,7 +22,6 @@ export default class CECMonitor extends EventEmitter {
   debug;
   client;
   ready;
-  address;
   no_serial;
   auto_restart;
   auto_restarting;
@@ -445,7 +444,10 @@ const _getUpdatedDeviceState = function (address) {
     this.emit(CECMonitor.EVENTS._EXPIREDCACHE, currentState)
 
     if (this.cache.autorefresh) {
-      return deasyncPromise(_getUpdatedDeviceStateAsync.call(this, address))
+      let done = false
+      _getUpdatedDeviceStateAsync.call(this, address).then(() => done = true)
+      deasync.loopWhile(() => !done)
+      return this.state_manager[address]
     }
   }
 
@@ -463,28 +465,27 @@ const _getUpdatedDeviceStateAsync = function(address) {
 }
 
 const _eventPromise = function(target, event, milisecondsToWait) {
+  let __listener, __timeout
 
-  let listener
+  const __removeListener = function __removeListener() {
+    this.removeListener(event, __listener)
+  }.bind(this)
 
-  const resolve = new Promise(function(resolve) {
-    listener = packet => {
+  return new Promise((resolve, reject) => {
+    __listener = packet => {
       if (packet.source === target){
+        clearTimeout(__timeout)
+        __removeListener()
         return resolve(packet)
       }
-      return _eventPromise.call(this, target, event)
     }
-
-    this.once(event, listener)
-  }.bind(this))
-
-  const reject = new Promise(function(resolve, reject) {
-    setTimeout(function() {
-      this.removeListener(event, listener)
+    __timeout = setTimeout(() => {
+      __removeListener()
       return reject(new CECTimeoutError(target, milisecondsToWait))
-    }.bind(this), milisecondsToWait).unref()
-  }.bind(this))
+    }, milisecondsToWait).unref()
 
-  return Promise.race([resolve, reject])
+    this.on(event, __listener)
+  })
 }
 
 /**
@@ -495,8 +496,8 @@ const _eventPromise = function(target, event, milisecondsToWait) {
 const _initCecClient = function() {
   this.client = spawn('cec-client', this.params)
   this.client.stdout
-    .pipe(es.split())
-    .pipe(es.map(_processStdOut.bind(this)))
+    .pipe(estream.split())
+    .pipe(estream.map(_processStdOut.bind(this)))
   this.client.on('close', _onClose.bind(this))
   return this.client
 }

@@ -64,11 +64,12 @@
     "release": "npm version --no-git-tag-version prerelease && git add ."
   },
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-eslint": "^8.0.1",
-    "babel-plugin-transform-class-properties": "^6.24.1",
-    "babel-preset-latest-node": "^0.4.0",
-    "eslint": "^4.7.2",
+    "@babel/cli": "^7.2.3",
+    "@babel/core": "^7.3.4",
+    "@babel/plugin-proposal-class-properties": "^7.3.4",
+    "@babel/preset-env": "^7.3.4",
+    "babel-eslint": "^10.0.1",
+    "eslint": "^5.15.3",
     "pre-commit": "^1.2.2"
   },
   "repository": {
@@ -77,8 +78,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "deasync-promise": "^1.0.1",
+    "deasync": "^0.1.14",
     "death": "^1.1.0",
-    "event-stream": "^3.3.4"
+    "event-stream": "^4.0.1"
   }
 }

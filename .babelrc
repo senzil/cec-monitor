@@ -1,8 +1,16 @@
 {
   "presets": [
-    ["latest-node", { "target": "6" }]
+    ["@babel/preset-env",
+      {
+        "targets": {
+          "node": "8"
+        }
+      },
+    ]
   ],
   "plugins": [
-    "transform-class-properties"
+    [
+      "@babel/plugin-proposal-class-properties"
+    ]
   ]
 }
