@@ -27,7 +27,7 @@ export default class StateManager extends Array {
   }
 
   get timestamp(){
-    return Math.min(...this)
+    return Math.min(...this.map(s => s.timestamp))
   }
 
   GetByPhysical(address) {
