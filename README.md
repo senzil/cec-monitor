@@ -112,6 +112,26 @@ from `args`, a substructure is created in the `data` property, as shown below fo
 
 ### Sending CEC Messages
 
+Before send messages to the adapter, you must to know if the adapter is ready using `WaitForReady` function.
+```ecmascript 6
+monitor.WaitForReady().then(() => monitor.SendMessage(...))
+
+if (monitor.ready) {
+  monitor.SendMessage(...)
+}
+```
+Or you can catch the error `CECAdapterNotReadyError` and `CECTimeoutError`
+```ecmascript 6
+try {
+  await monitor.SendMessage(...)
+} catch (e) {
+  console.warn(e)
+}
+
+monitor.SendMessage(...).catch(console.warn)
+
+```
+
 There are four APIs to choose from to send a message on the bus.  This section discusses each of these
 methods, with examples.  
 

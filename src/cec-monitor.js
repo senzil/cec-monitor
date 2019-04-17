@@ -10,7 +10,8 @@ import estream from 'event-stream'
 import deasync from 'deasync'
 import CEC from './HDMI-CEC.1.4'
 import ON_DEATH from 'death'
-import CECTimeoutError from './TimeoutError'
+import CECAdapterNotReadyError from './CECAdapterNotReadyError'
+import CECTimeoutError from './CECTimeoutError'
 import StateManager from './StateManager'
 import Convert from './Convert'
 import Validate from './Validate'
@@ -61,9 +62,6 @@ export default class CECMonitor extends EventEmitter {
     this.user_control_hold_interval = options.user_control_hold_interval || 1000
     this.user_control_hold_interval_ref = null
 
-    // Cache of data about logical addresses
-    this.state_manager = new StateManager()
-
     process.on('beforeExit', this.Stop)
     process.on('exit', this.Stop)
 
@@ -77,23 +75,32 @@ export default class CECMonitor extends EventEmitter {
     }
 
     this.params = []
+    let earlyPrimaryAddress
     if (options.recorder !== false){
       this.params.push('-t', 'r')
+      earlyPrimaryAddress = 1
     }
 
     if (options.player === true){
       this.params.push('-t', 'p')
+      earlyPrimaryAddress = earlyPrimaryAddress || 4
     }
 
     if (options.tuner === true){
       this.params.push('-t', 't')
+      earlyPrimaryAddress = earlyPrimaryAddress || 3
     }
 
     if (options.audio === true){
       this.params.push('-t', 'a')
+      earlyPrimaryAddress = earlyPrimaryAddress || 5
     }
 
     this.params.push('-o', this.OSDName, '-d', '31', '-p', options.hdmiport || 1, this.com_port)
+
+    // Cache of data about logical addresses
+    this.state_manager = new StateManager()
+    this.state_manager.primary = earlyPrimaryAddress
 
     _initCecClient.call(this)
   }
@@ -182,14 +189,6 @@ export default class CECMonitor extends EventEmitter {
       VENDOR_REMOTE_BUTTON_DOWN: 'VENDOR_REMOTE_BUTTON_DOWN',
       VENDOR_REMOTE_BUTTON_UP: 'VENDOR_REMOTE_BUTTON_UP'
     }
-  }
-
-  /**
-   * Resolves promise when ready cec-client for commands
-   * @return {Promise} Resolves when ready
-   */
-  get isReady() {
-    return new Promise(_checkReady.bind(this))
   }
 
   /**
@@ -316,13 +315,18 @@ export default class CECMonitor extends EventEmitter {
     return this.state_manager.active_source
   }.bind(this)
 
-  WriteRawMessage = function(raw) {
-    return this.isReady
-      .then(() => this.client.stdin.write(raw + '\n'))
-      .catch(e => {
-        console.log('the cec adapter is not ready')
+  WriteRawMessage = async function(raw) {
+    if (this.client && this.ready) {
+      try {
+        return this.client.stdin.write(raw + '\n')
+      } catch (e) {
+        console.log('Is not possible write messages to the cec adapter right now')
         console.log(e)
-      })
+        throw new CECAdapterNotReadyError(e)
+      }
+    }
+    console.log('the cec adapter is not ready')
+    throw new CECAdapterNotReadyError()
   }.bind(this)
 
   WriteMessage = function(source, target, opcode, args) {
@@ -358,6 +362,7 @@ export default class CECMonitor extends EventEmitter {
    * @see cec
    * @see WriteMessage
    * @return {Promise} When promise is resolved, the message is sent, otherwise if rejected, the cec adapter is not ready
+   * @throws CECAdapterNotReadyError
    */
   SendMessage = function(source, target, opcode, args) {
     source = _parseAddress.call(this, source, this.GetLogicalAddress())
@@ -393,7 +398,7 @@ export default class CECMonitor extends EventEmitter {
 
   /**
    * Send a 'tx' message on CEC bus and wait for a event like response or timeout
-   *
+   * @async
    * @param {String|Number|null} source Logical address for source of message (defaults to own address if null)
    * @param {String|Number} target Logical address for target of message (defaults to broadcast if null)
    * @param {String|Number} opcode Opcode for message expressed as a byte value or STRING label
@@ -404,16 +409,26 @@ export default class CECMonitor extends EventEmitter {
    * source, logical, opcode and args work like SendMessage function
    * @see SendMessage
    * @return {Promise} When promise is resolved, the message is sent and get the packet from the event as response, otherwise if rejected, the cec adapter is not ready or the event timeouted
+   * @throws CECAdapterNotReadyError
+   * @throws CECTimeoutError
    */
   SendCommand = function(source, target, opcode, event, args){
     source = _parseAddress.call(this, source, this.GetLogicalAddress())
     target = _parseAddress.call(this, target, CEC.LogicalAddress.BROADCAST)
 
-    let eventHandler = _eventPromise.call(this, target, event, this.command_timeout * 1000)
-
     return this.SendMessage(source, target, opcode, args)
-      .then(() => eventHandler)
+      .then(() => _eventPromise.call(this, target, event, this.command_timeout * 1000))
   }.bind(this)
+
+  /**
+   * Async function what resolve only when the adapter is ready to receive messages
+   * @returns {Promise} Resolved promise with true as resolved value
+   * @public
+   */
+  WaitForReady = async function() {
+    deasync.loopWhile(() => !this.ready)
+    return this.ready
+  }.bind(this);
 
   Stop = function() {
     if (this.client) {
@@ -518,20 +533,6 @@ const _onClose = function() {
   } else if (this.reconnect_intent) {
     setTimeout(_initCecClient.bind(this), this.no_serial.wait_time * 1000)
   }
-}
-
-/**
- * Promise what resolve only when the adapter is ready to receive messages
- * @param {function} resolve
- * @returns {Number|Promise} Resolved promise or timer id
- * @private
- */
-const _checkReady = function(resolve) {
-  if (this.ready) {
-    return resolve()
-  }
-
-  return setTimeout(function () {return _checkReady.call(this, resolve)}.bind(this), 1000).unref()
 }
 
 /**
